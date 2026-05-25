@@ -70,7 +70,7 @@ export default function Navbar() {
         >
           <img
             src="/favicon.png"
-            alt="Finance Tracker"
+            alt=""
             className="navbar-brand-img me-2"
             style={{
               width: '40px',

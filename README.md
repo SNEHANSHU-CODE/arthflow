@@ -7,11 +7,7 @@ Unauthorized copying, forking, or commercial use is strictly prohibited.
 <div align="center">
  
 # 💰 Finance Tracker
- 
-**A production-grade personal finance platform built with the MERN stack**
-
-![Landing Page](.screenshots/1.Landing_Page.png)
- 
+  
 </div>
 
 ---
@@ -77,12 +73,12 @@ Finance Tracker is a full-stack web application that gives users a complete pict
          │                       │
          │               ┌───────────────────┐     ┌──────────────────┐
          └──────────────▶│  Analytics Server │────▶│  MongoDB (same)  │
-                         │  GraphQL + Apollo │     └──────────────────┘
-                         │  PDF Report Cron  │
-                         └───────────────────┘
-                                  │
-                         ┌───────────────────┐     ┌──────────────────┐
-                         │   Python AI Server│────▶│  MongoDB Atlas   │
+         |               │  GraphQL + Apollo │     └──────────────────┘
+         |               │  PDF Report Cron  │
+         |               └───────────────────┘
+         |                        │
+         |               ┌───────────────────┐     ┌──────────────────┐
+         └──────────────▶│   Python AI Server│────▶│  MongoDB Atlas   │
                          │  FastAPI + RAG    │     │  Vector Search   │
                          │  Gemini Embedding │     └──────────────────┘
                          └───────────────────┘
@@ -103,7 +99,7 @@ Finance Tracker is a full-stack web application that gives users a complete pict
 | **Database** | MongoDB Atlas (Vector Search enabled) |
 | **Auth** | JWT (RS256), HTTP-only cookies, Google OAuth 2.0 |
 | **Email** | Resend |
-| **Deployment** | Render (all 4 services) |
+| **Deployment** | Vercel (Frontend), Render (Backend services) |
 
 ---
 

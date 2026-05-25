@@ -16,9 +16,9 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="col-md-3">
             <div className="d-flex align-items-center mb-3">
-              <img 
-                src="/favicon.png" 
-                alt="Finance Tracker Logo"
+              <img
+                src="/favicon.png"
+                alt=""
                 className="navbar-brand-img me-2"
                 style={{
                   width: '32px',
@@ -26,19 +26,19 @@ export default function Footer() {
                   objectFit: 'contain',
                   objectPosition: 'center'
                 }}
-          />
-              <h4 className="text-success mb-0">Finance Tracker</h4>
+              />
+              <p className="text-success mb-0 fw-bold fs-4">Finance Tracker</p>
             </div>
             <div className="d-flex align-items-center">
               <p className="text-light small">
-              Empower your financial life with powerful insights, expense tracking, and goal setting—all in one place.
-            </p>
+                Empower your financial life with powerful insights, expense tracking, and goal setting—all in one place.
+              </p>
             </div>
           </div>
 
           {/* Quick Links */}
           <div className="col-md-3">
-            <h6 className="text-uppercase fw-semibold mb-3">Quick Links</h6>
+            <p className="text-uppercase fw-semibold mb-3">Quick Links</p>
             <ul className="list-unstyled">
               <li><Link to="/dashboard/dashboard" className="text-light text-decoration-none">Dashboard</Link></li>
               <li><Link to="/dashboard/analytics" className="text-light text-decoration-none">Analytics</Link></li>
@@ -50,7 +50,7 @@ export default function Footer() {
 
           {/* Support Links */}
           <div className="col-md-3">
-            <h6 className="text-uppercase fw-semibold mb-3">Support</h6>
+            <p className="text-uppercase fw-semibold mb-3">Support</p>
             <ul className="list-unstyled">
               <li><Link to="/service" className="text-light text-decoration-none">Term of Service</Link></li>
               <li><Link to="/privacy" className="text-light text-decoration-none">Privacy Policy</Link></li>
@@ -60,13 +60,13 @@ export default function Footer() {
 
           {/* Contact & Social */}
           <div className="col-md-3">
-            <h6 className="text-uppercase fw-semibold mb-3">Connect with Us</h6>
+            <p className="text-uppercase fw-semibold mb-3">Connect with Us</p>
             <div className="d-flex gap-3 fs-5">
-              <Link to="#" className="text-light"><FaFacebookF /></Link>
-              <Link to="#" className="text-light"><FaLinkedinIn /></Link>
-              <Link to="#" className="text-light"><FaXTwitter /></Link>
-              <Link to="mailto:financetracker.v1@gmail.com" className="text-light"><FaEnvelope /></Link>
-            </div>
+            <Link to="#" className="text-light" aria-label="Facebook"><FaFacebookF /></Link>
+            <Link to="#" className="text-light" aria-label="LinkedIn"><FaLinkedinIn /></Link>
+            <Link to="#" className="text-light" aria-label="X (Twitter)"><FaXTwitter /></Link>
+            <Link to="mailto:financetracker.v1@gmail.com" className="text-light" aria-label="Send us an email"><FaEnvelope /></Link>
+          </div>
           </div>
         </div>
 

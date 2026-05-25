@@ -77,16 +77,16 @@ const HeroSection = () => (
             <div className="bg-light rounded-4 shadow-lg p-4" style={{ filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.3))', transform: 'perspective(1000px) rotateY(-5deg) rotateX(5deg)' }}>
               <div className="bg-primary rounded-3 p-4 mb-3">
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="text-white mb-0">Financial Dashboard</h5>
+                  <p className="text-white mb-0 fw-semibold">Financial Dashboard</p>
                   <FaChartLine className="text-white" />
                 </div>
                 <div className="row text-white">
                   <div className="col-6">
-                    <div className="small opacity-75">Total Balance</div>
+                    <div className="small opacity-90">Total Balance</div>
                     <div className="fw-bold fs-5">$24,580.50</div>
                   </div>
                   <div className="col-6">
-                    <div className="small opacity-75">This Month</div>
+                    <div className="small opacity-90">This Month</div>
                     <div className="fw-bold fs-5 text-success">+12.5%</div>
                   </div>
                 </div>
@@ -137,7 +137,7 @@ const FeaturesSection = () => (
               <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
                 <FaChartLine size={32} />
               </div>
-              <h4 className="fw-bold mb-3">Smart Analytics</h4>
+              <h3 className="fw-bold mb-3">Smart Analytics</h3>
               <p className="text-muted mb-0">Gain deep insights into your spending patterns with AI-powered analytics and personalized financial recommendations.</p>
             </div>
           </div>
@@ -148,7 +148,7 @@ const FeaturesSection = () => (
               <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
                 <FaTachometerAlt size={32} />
               </div>
-              <h4 className="fw-bold mb-3">Real-time Analytics</h4>
+              <h3 className="fw-bold mb-3">Real-time Analytics</h3>
               <p className="text-muted mb-0">Monitor your financial health with live dashboards and instant notifications for better control over your money.</p>
             </div>
           </div>
@@ -159,7 +159,7 @@ const FeaturesSection = () => (
               <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
                 <FaShieldAlt size={32} />
               </div>
-              <h4 className="fw-bold mb-3">Bank-Level Security</h4>
+              <h3 className="fw-bold mb-3">Bank-Level Security</h3>
               <p className="text-muted mb-0">Your data is protected with enterprise-grade encryption and multi-factor authentication. Your privacy is our priority.</p>
             </div>
           </div>
@@ -170,7 +170,7 @@ const FeaturesSection = () => (
               <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-3 text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
                 <FaChartBar size={32} />
               </div>
-              <h4 className="fw-bold mb-3">Advanced Reporting</h4>
+              <h3 className="fw-bold mb-3">Advanced Reporting</h3>
               <p className="text-muted mb-0">Generate comprehensive financial reports with customizable charts and detailed insights to track your progress.</p>
             </div>
           </div>
@@ -197,7 +197,7 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
               <FaGift size={32} />
             </div>
-            <h4 className="fw-bold mb-3">100% Free Forever</h4>
+            <h3 className="fw-bold mb-3">100% Free Forever</h3>
             <p className="text-muted">No hidden fees, no premium plans, no limits. Access all features completely free with no strings attached.</p>
           </div>
         </div>
@@ -206,7 +206,7 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
               <FaLock size={32} />
             </div>
-            <h4 className="fw-bold mb-3">Data Privacy First</h4>
+            <h3 className="fw-bold mb-3">Data Privacy First</h3>
             <p className="text-muted">Your financial data stays secure and private. We never sell or share your information with third parties.</p>
           </div>
         </div>
@@ -215,7 +215,7 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
               <FaMobileAlt size={32} />
             </div>
-            <h4 className="fw-bold mb-3">Multi-Platform Access</h4>
+            <h3 className="fw-bold mb-3">Multi-Platform Access</h3>
             <p className="text-muted">Access your financial data anywhere, anytime with our responsive web app and mobile-friendly design.</p>
           </div>
         </div>
@@ -227,7 +227,7 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
               <FaSyncAlt size={32} />
             </div>
-            <h4 className="fw-bold mb-3">Real-time Updates</h4>
+            <h3 className="fw-bold mb-3">Real-time Updates</h3>
             <p className="text-muted">Get instant updates on your financial status with real-time synchronization across all your accounts.</p>
           </div>
         </div>
@@ -236,7 +236,7 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }}>
               <FaCog size={32} />
             </div>
-            <h4 className="fw-bold mb-3">Easy Setup</h4>
+            <h3 className="fw-bold mb-3">Easy Setup</h3>
             <p className="text-muted">Get started in minutes with our intuitive setup process. No complex configurations required.</p>
           </div>
         </div>
@@ -245,7 +245,7 @@ const BenefitsSection = () => (
             <div className="d-inline-flex align-items-center justify-content-center mb-4 rounded-circle text-white" style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' }}>
               <FaHeadset size={32} />
             </div>
-            <h4 className="fw-bold mb-3">24/7 Support</h4>
+            <h3 className="fw-bold mb-3">24/7 Support</h3>
             <p className="text-muted">Our dedicated support team is always here to help you make the most of your financial management.</p>
           </div>
         </div>

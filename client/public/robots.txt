@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /signup
+Allow: /privacy
+Allow: /service
+Allow: /developersnote
+
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /resetpassword
+Disallow: /oauth/
+Disallow: /api/
+Disallow: /assets/
+
+Sitemap: https://financetracker.space/sitemap.xml

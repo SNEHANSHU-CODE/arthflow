@@ -4,12 +4,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 // CLOUDINARY IMAGE URLS - update these anytime
 // ============================================================
 const SLIDE_IMAGES = {
-  dashboard:    'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384694/3.Dashboard_b5vffv.png',
-  transactions: 'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384695/4.Transaction_Page_hpoxe7.png',
-  analytics:    'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384718/5.Analytics_Page_jjhtnb.png',
-  goals:        'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384697/6.Goals_Page_rvxcve.png',
-  reminders:    'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772384697/7.Reminder_Page_f5zbdu.png',
-  vault:        'https://res.cloudinary.com/dumsrpiqd/image/upload/v1772559784/Vault_f8xldz.png',
+  dashboard: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384694/3.Dashboard_b5vffv.png',
+  transactions: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384695/4.Transaction_Page_hpoxe7.png',
+  analytics: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384718/5.Analytics_Page_jjhtnb.png',
+  goals: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384697/6.Goals_Page_rvxcve.png',
+  reminders: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384697/7.Reminder_Page_f5zbdu.png',
+  vault: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772559784/Vault_f8xldz.png',
 };
 // ============================================================
 
@@ -70,15 +70,21 @@ const SLIDES = [
   },
 ];
 
-// Preload all images into browser cache immediately on mount
+// Preload 1st image only into browser cache immediately on mount
 const usePreloadImages = () => {
   useEffect(() => {
-    SLIDES.forEach((slide) => {
-      const src = SLIDE_IMAGES[slide.imageKey];
-      if (!src) return;
-      const img = new Image();
-      img.src = src;
-    });
+    // Eagerly load only the first slide
+    const first = new Image();
+    first.src = SLIDE_IMAGES[SLIDES[0].imageKey];
+
+    // Lazy-load the rest after 2 seconds
+    const timer = setTimeout(() => {
+      SLIDES.slice(1).forEach((slide) => {
+        const img = new Image();
+        img.src = SLIDE_IMAGES[slide.imageKey];
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 };
 
