@@ -4,12 +4,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 // CLOUDINARY IMAGE URLS - update these anytime
 // ============================================================
 const SLIDE_IMAGES = {
-  dashboard: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384694/3.Dashboard_b5vffv.png',
-  transactions: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384695/4.Transaction_Page_hpoxe7.png',
-  analytics: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384718/5.Analytics_Page_jjhtnb.png',
-  goals: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384697/6.Goals_Page_rvxcve.png',
-  reminders: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772384697/7.Reminder_Page_f5zbdu.png',
-  vault: 'https://res.cloudinary.com/dumsrpiqd/image/upload/w_700,f_auto,q_auto/v1772559784/Vault_f8xldz.png',
+  dashboard: 'https://res.cloudinary.com/dwbjric7q/image/upload/w_700,f_auto,q_auto/v1781442899/3.Dashboard_b5vffv_dyrnp3.png',
+  transactions: 'https://res.cloudinary.com/dwbjric7q/image/upload/w_700,f_auto,q_auto/v1781442899/4.Transaction_Page_hpoxe7_bb3dmq.png',
+  analytics: 'https://res.cloudinary.com/dwbjric7q/image/upload/w_700,f_auto,q_auto/v1781442899/5.Analytics_Page_jjhtnb_kfnyz9.png',
+  goals: 'https://res.cloudinary.com/dwbjric7q/image/upload/w_700,f_auto,q_auto/v1781442900/6.Goals_Page_rvxcve_vigpyb.png',
+  reminders: 'https://res.cloudinary.com/dwbjric7q/image/upload/w_700,f_auto,q_auto/v1781442900/7.Reminder_Page_f5zbdu_erymwp.png',
+  vault: 'https://res.cloudinary.com/dwbjric7q/image/upload/w_700,f_auto,q_auto/v1781442899/Vault_f8xldz_ym9szg.png',
 };
 // ============================================================
 

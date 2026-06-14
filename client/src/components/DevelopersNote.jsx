@@ -405,7 +405,7 @@ return (
             <div className="card-body p-3 p-md-5">
               <div className="d-flex align-items-center justify-content-between mb-4">
                 <h3 className="mb-0 fw-bold text-dark">Future Enhancements</h3>
-                <span className="badge bg-primary fs-6 px-3 py-2">Roadmap 2025-2026</span>
+                <span className="badge bg-primary fs-6 px-3 py-2">Roadmap 2026-2027</span>
               </div>
 
               <p className="text-muted mb-4 lead">

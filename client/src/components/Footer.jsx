@@ -27,7 +27,7 @@ export default function Footer() {
                   objectPosition: 'center'
                 }}
               />
-              <p className="text-success mb-0 fw-bold fs-4">Finance Tracker</p>
+              <p className="text-success mb-0 fw-bold fs-4">ArthFlow</p>
             </div>
             <div className="d-flex align-items-center">
               <p className="text-light small">
@@ -65,7 +65,7 @@ export default function Footer() {
             <Link to="#" className="text-light" aria-label="Facebook"><FaFacebookF /></Link>
             <Link to="#" className="text-light" aria-label="LinkedIn"><FaLinkedinIn /></Link>
             <Link to="#" className="text-light" aria-label="X (Twitter)"><FaXTwitter /></Link>
-            <Link to="mailto:financetracker.v1@gmail.com" className="text-light" aria-label="Send us an email"><FaEnvelope /></Link>
+            <Link to="mailto:arthflow0@gmail.com" className="text-light" aria-label="Send us an email"><FaEnvelope /></Link>
           </div>
           </div>
         </div>
@@ -73,7 +73,7 @@ export default function Footer() {
         <hr className="my-4 border-secondary" />
 
         <div className="text-center small text-light">
-          &copy; {new Date().getFullYear()} Finance Tracker. All rights reserved.
+          &copy; {new Date().getFullYear()} ArthFlow. All rights reserved.
         </div>
       </div>
     </footer>

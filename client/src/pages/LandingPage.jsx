@@ -185,9 +185,9 @@ const BenefitsSection = () => (
   <section className="py-5 position-relative" style={{ background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
     <div className="container">
       <div className="text-center mb-5">
-        <h2 className="display-5 fw-bold mb-4">Why Choose Finance Tracker?</h2>
+        <h2 className="display-5 fw-bold mb-4">Why Choose ArthFlow?</h2>
         <p className="lead text-muted col-lg-8 mx-auto">
-          Discover the benefits that make Finance Tracker the perfect choice for managing your finances
+          Discover the benefits that make ArthFlow the perfect choice for managing your finances
         </p>
       </div>
 
@@ -262,7 +262,7 @@ const CTASection = () => (
         <div className="col-lg-8">
           <h2 className="display-5 fw-bold mb-4">Ready to Transform Your Financial Future?</h2>
           <p className="lead mb-5 opacity-75">
-            Join thousands of users who trust Finance Tracker to manage their finances securely and intelligently.
+            Join thousands of users who trust ArthFlow to manage their finances securely and intelligently.
             Start your journey today - completely free!
           </p>
           <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">

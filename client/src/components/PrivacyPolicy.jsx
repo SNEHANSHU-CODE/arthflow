@@ -29,7 +29,7 @@ const PrivacyPolicy = () => {
                   <h2 className="h3 mb-0 text-dark">Introduction</h2>
                 </div>
                 <p className="text-muted lh-lg">
-                  Finance Tracker ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our finance tracking application that integrates with Google Calendar to help you manage your financial activities.
+                  ArthFlow ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our finance tracking application that integrates with Google Calendar to help you manage your financial activities.
                 </p>
               </section>
 
@@ -223,7 +223,7 @@ const PrivacyPolicy = () => {
                     <div className="col-md-6">
                       <div className="d-flex align-items-center">
                         <FaEnvelope className="text-info me-2" size={16} />
-                        <span className="text-muted">Email: financetracker.v1@gmail.com</span>
+                        <span className="text-muted">Email: arthflow0@gmail.com</span>
                       </div>
                     </div>
                     <div className="col-md-6">

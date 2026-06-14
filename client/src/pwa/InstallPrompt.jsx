@@ -68,8 +68,8 @@ const InstallPrompt = () => {
   return (
     <div className="install-prompt">
       <div className="install-content">
-        <h3>Install Finance Tracker</h3>
-        <p>Get quick access to Finance Tracker</p>
+        <h3>Install ArthFlow</h3>
+        <p>Get quick access to ArthFlow</p>
         <div className="install-actions">
           <button
             onClick={handleInstall}

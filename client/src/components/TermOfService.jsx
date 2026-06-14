@@ -12,7 +12,7 @@ const TermsOfService = () => {
               <FaGavel className="text-primary mb-3" size={60} />
               <h1 className="display-4 fw-bold text-dark mb-3">Terms of Service</h1>
               <p className="lead text-muted">
-                Please read these terms carefully before using our Finance Tracker application.
+                Please read these terms carefully before using our ArthFlow application.
               </p>
               <div className="bg-primary text-white px-3 py-2 rounded-pill d-inline-block">
                 <small><strong>Effective Date:</strong> {new Date().toLocaleDateString()}</small>
@@ -30,7 +30,7 @@ const TermsOfService = () => {
                 </div>
                 <div className="bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3 p-4">
                   <p className="text-muted mb-0">
-                    By accessing and using Finance Tracker, you accept and agree to be bound by the terms and provision of this agreement. 
+                    By accessing and using ArthFlow, you accept and agree to be bound by the terms and provision of this agreement. 
                     If you do not agree to abide by the above, please do not use this service.
                   </p>
                 </div>
@@ -43,7 +43,7 @@ const TermsOfService = () => {
                   <h2 className="h3 mb-0 text-dark">Service Description</h2>
                 </div>
                 <p className="text-muted lh-lg mb-4">
-                  Finance Tracker is a web-based application that helps you manage your personal finances by integrating with Google Calendar. 
+                  ArthFlow is a web-based application that helps you manage your personal finances by integrating with Google Calendar. 
                   Our service allows you to track expenses, manage budgets, and analyze your financial patterns.
                 </p>
                 
@@ -279,7 +279,7 @@ const TermsOfService = () => {
                         <FaEnvelope className="text-primary me-2" size={16} />
                         <div>
                           <small className="text-muted d-block">Email</small>
-                          <span className="fw-semibold">financetracker.v1@gmail.com</span>
+                          <span className="fw-semibold">arthflow0@gmail.com</span>
                         </div>
                       </div>
                     </div>
@@ -301,7 +301,7 @@ const TermsOfService = () => {
             {/* Footer Note */}
             <div className="text-center mt-4">
               <small className="text-muted">
-                By using Finance Tracker, you acknowledge that you have read, understood, and agree to these Terms of Service.
+                By using ArthFlow, you acknowledge that you have read, understood, and agree to these Terms of Service.
               </small>
             </div>
 

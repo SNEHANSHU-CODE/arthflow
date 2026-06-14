@@ -79,7 +79,7 @@ export default function Navbar() {
               objectPosition: 'center'
             }}
           />
-          Finance Tracker
+          ArthFlow
         </Link>
 
         <button

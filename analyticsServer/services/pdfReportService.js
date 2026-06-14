@@ -324,7 +324,7 @@ class PdfReportService {
     return {
       columns: [
         {
-          text: '© Finance Tracker - Confidential',
+          text: '© ArthFlow - Confidential',
           alignment: 'left',
           margin: [40, 0, 0, 20],
           style: 'small'

@@ -6,7 +6,7 @@ Unauthorized copying, forking, or commercial use is strictly prohibited.
 
 <div align="center">
  
-# 💰 Finance Tracker
+# 💰 ArthFlow
   
 </div>
 
@@ -14,7 +14,7 @@ Unauthorized copying, forking, or commercial use is strictly prohibited.
 
 ## 📸 Overview
 
-Finance Tracker is a full-stack web application that gives users a complete picture of their financial health — real-time dashboards, smart transaction imports, goal tracking, AI-powered insights, and automated monthly reports delivered to their inbox.
+ArthFlow is a full-stack web application that gives users a complete picture of their financial health — real-time dashboards, smart transaction imports, goal tracking, AI-powered insights, and automated monthly reports delivered to their inbox.
 
 ---
 
@@ -165,7 +165,7 @@ finance-tracker/
 
 | | |
 |---|---|
-| 🔗 App | [https://financetracker.space](https://financetracker.space) |
+| 🔗 App | [https://arthflow.vercel.app](https://arthflow.vercel.app) |
 | 📧 Contact | snehanshusekhar99@gmail.com |
 | 💼 LinkedIn | [Snehanshu Sekhar Jena](https://linkedin.com/in/snehanshu-sekhar-jena-5365841a1) |
 
