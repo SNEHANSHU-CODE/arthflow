@@ -70,23 +70,7 @@ const SLIDES = [
   },
 ];
 
-// Preload 1st image only into browser cache immediately on mount
-const usePreloadImages = () => {
-  useEffect(() => {
-    // Eagerly load only the first slide
-    const first = new Image();
-    first.src = SLIDE_IMAGES[SLIDES[0].imageKey];
 
-    // Lazy-load the rest after 2 seconds
-    const timer = setTimeout(() => {
-      SLIDES.slice(1).forEach((slide) => {
-        const img = new Image();
-        img.src = SLIDE_IMAGES[slide.imageKey];
-      });
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
-};
 
 const SlideImageStack = ({ activeIndex, animating }) => (
   <div
@@ -142,8 +126,6 @@ const DashboardPreview = () => {
   const [animating, setAnimating] = useState(false);
   const intervalRef = useRef(null);
   const INTERVAL_MS = 4500;
-
-  usePreloadImages();
 
   const goTo = useCallback(
     (index) => {

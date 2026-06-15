@@ -1,13 +1,11 @@
-const { Resend } = require('resend');
 const fs = require('fs');
 
 class EmailService {
   constructor() {
-    this.resend      = new Resend(process.env.RESEND_API_KEY);
-    const domain     = process.env.EMAIL_DOMAIN || 'financetracker.space';
-    this.from        = `Finance Tracker <reports@${domain}>`;
-    this.appName     = 'Finance Tracker';
-    this.appUrl      = process.env.APP_URL || 'https://financetracker.space';
+    this.webhookUrl   = process.env.MAKE_EMAIL_WEBHOOK_URL;
+    this.from         = 'arthflow0@gmail.com';
+    this.appName      = 'Finance Tracker';
+    this.appUrl       = process.env.APP_URL || 'https://financetracker.space';
   }
 
   sanitizeText(input) {
@@ -146,18 +144,43 @@ class EmailService {
     try {
       const pdfBuffer      = fs.readFileSync(data.pdfPath);
       const attachmentName = `Financial_Report_${data.monthLabel.replace(/\s+/g, '_')}.pdf`;
+      const html = this._generateMonthlyReportTemplate(data);
+      const subject = `Your ${data.monthLabel} Financial Report - ${this.appName}`;
 
-      const { error } = await this.resend.emails.send({
-        from:    this.from,
-        to:      email,
-        subject: `Your ${data.monthLabel} Financial Report - ${this.appName}`,
-        html:    this._generateMonthlyReportTemplate(data),
-        attachments: [{ filename: attachmentName, content: pdfBuffer.toString('base64') }],
+      if (!this.webhookUrl) {
+        throw new Error('MAKE_EMAIL_WEBHOOK_URL is not set');
+      }
+
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: this.from,
+          to: email,
+          subject: subject,
+          type: 'monthly_report',
+          html: html,
+          attachmentFilename: attachmentName,
+          attachmentContent: pdfBuffer.toString('base64'),
+          attachmentContentType: 'application/pdf',
+          attachments: [
+            {
+              filename: attachmentName,
+              content: pdfBuffer.toString('base64'),
+              contentType: 'application/pdf'
+            }
+          ]
+        })
       });
 
-      if (error) throw new Error(`Resend error: ${error.message}`);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Webhook responded with status ${response.status}: ${text}`);
+      }
 
-      console.log(`\u2714\ufe0f Monthly report sent to ${email}`);
+      console.log(`✔️ Monthly report sent to ${email}`);
       return { success: true };
     } catch (error) {
       console.error(`Error sending monthly report to ${email}:`, error.message);
@@ -166,11 +189,11 @@ class EmailService {
   }
 
   async verifyConnection() {
-    if (!process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not set');
+    if (!process.env.MAKE_EMAIL_WEBHOOK_URL) {
+      console.error('MAKE_EMAIL_WEBHOOK_URL is not set');
       return false;
     }
-    console.log('Email service (Resend) is ready');
+    console.log('Email service (Make Webhook) is configured');
     return true;
   }
 }

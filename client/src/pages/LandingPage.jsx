@@ -1,9 +1,7 @@
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import { FaArrowRight, FaChartLine, FaTachometerAlt, FaShieldAlt, FaChartBar, FaGift, FaLock, FaMobileAlt, FaSyncAlt, FaCog, FaHeadset, FaArrowUp, FaArrowDown, FaChartPie } from 'react-icons/fa';
 import "./styles/LandingPage.css";
-
-// Lazy load it so it doesn't block the initial page paint.
-const DashboardPreview = lazy(() => import('../components/DashboardPreview'));
+import DashboardPreview from '../components/DashboardPreview';
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 const HeroSection = () => (
@@ -277,30 +275,11 @@ const CTASection = () => (
   </section>
 );
 
-// ─── Fallback shown while DashboardPreview lazy-loads ─────────────────────────
-const SliderFallback = () => (
-  <div
-    style={{
-      background: '#080a10',
-      minHeight: '400px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}
-  >
-    <div className="spinner-border text-light opacity-25" role="status">
-      <span className="visually-hidden">Loading...</span>
-    </div>
-  </div>
-);
-
 const LandingPage = () => (
   <div className="overflow-hidden">
     <HeroSection />
     <FeaturesSection />
-    <Suspense fallback={<SliderFallback />}>
-      <DashboardPreview />
-    </Suspense>
+    <DashboardPreview />
     <BenefitsSection />
     <CTASection />
   </div>

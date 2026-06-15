@@ -1,12 +1,10 @@
-const { Resend } = require('resend');
 const { config } = require('../config/redis');
 
 class EmailService {
   constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY);
-    const domain = process.env.EMAIL_DOMAIN || 'financetracker.space';
-    this.fromOTP      = `Finance Tracker <no-reply@${domain}>`;
-    this.fromReminder = `Reminders <reminder@${domain}>`;
+    this.webhookUrl   = process.env.MAKE_EMAIL_WEBHOOK_URL;
+    this.fromOTP      = 'arthflow0@gmail.com';
+    this.fromReminder = 'arthflow0@gmail.com';
     this.appName      = 'Finance Tracker';
     this.appUrl       = process.env.APP_URL || 'https://financetracker.space';
     this.accentColor  = '#2563EB';
@@ -25,22 +23,37 @@ class EmailService {
 
   async sendOTPEmail(email, otp) {
     try {
-      const { data, error } = await this.resend.emails.send({
-        from: this.fromOTP,
-        to: email,
-        subject: `${otp} is your Finance Tracker verification code`,
-        html: this.generateOTPEmailTemplate(otp),
-      });
+      const subject = `${otp} is your Finance Tracker verification code`;
+      const html = this.generateOTPEmailTemplate(otp);
 
-      if (error) {
-        console.error('Resend error sending OTP email:', error);
-        throw new Error('Failed to send email');
+      if (!this.webhookUrl) {
+        throw new Error('MAKE_EMAIL_WEBHOOK_URL is not set');
       }
 
-      console.log('OTP email sent:', data.id);
-      return { success: true, messageId: data.id };
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: this.fromOTP,
+          to: email,
+          subject: subject,
+          type: 'otp',
+          otp: otp.toString(),
+          html: html,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Webhook responded with status ${response.status}: ${text}`);
+      }
+
+      console.log('OTP email webhook triggered successfully');
+      return { success: true };
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('Error sending OTP email via webhook:', error);
       throw new Error('Failed to send email');
     }
   }
@@ -266,30 +279,49 @@ class EmailService {
 
   async sendReminderEmail(email, data) {
     try {
-      const { error } = await this.resend.emails.send({
-        from: this.fromReminder,
-        to: email,
-        subject: `🔔 Reminder: ${data.title}`,
-        html: this.generateSendReminderTemplate(data),
-      });
+      const subject = `🔔 Reminder: ${data.title}`;
+      const html = this.generateSendReminderTemplate(data);
 
-      if (error) {
-        console.error('Resend error sending reminder email:', error);
-        return;
+      if (!this.webhookUrl) {
+        throw new Error('MAKE_EMAIL_WEBHOOK_URL is not set');
       }
 
-      console.log(`Reminder email sent to ${email}`);
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: this.fromReminder,
+          to: email,
+          subject: subject,
+          type: 'reminder',
+          data: {
+            title: data.title,
+            description: data.description || '',
+            date: data.date,
+          },
+          html: html,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Webhook responded with status ${response.status}: ${text}`);
+      }
+
+      console.log(`Reminder email webhook triggered for ${email}`);
     } catch (error) {
-      console.error('Error sending reminder email:', error);
+      console.error('Error sending reminder email via webhook:', error);
     }
   }
 
   async verifyConnection() {
     try {
-      if (!process.env.RESEND_API_KEY) {
-        throw new Error('RESEND_API_KEY is not set');
+      if (!process.env.MAKE_EMAIL_WEBHOOK_URL) {
+        throw new Error('MAKE_EMAIL_WEBHOOK_URL is not set');
       }
-      console.log('Email service (Resend) is ready');
+      console.log('Email service (Make Webhook) is configured');
       return true;
     } catch (error) {
       console.error('Email service verification failed:', error);
