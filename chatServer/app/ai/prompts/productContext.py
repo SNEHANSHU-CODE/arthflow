@@ -1,6 +1,6 @@
 """
 Product Context
-Single source of truth for Finance Tracker AI behavior.
+Single source of truth for Arthflow AI behavior.
 All prompts (authenticated + guest) inject rules from here.
 """
 
@@ -8,7 +8,7 @@ All prompts (authenticated + guest) inject rules from here.
 # App Identity
 # ------------------------------------------------------------------
 
-APP_NAME = "Finance Tracker"
+APP_NAME = "Arthflow"
 APP_TAGLINE = "Your personal finance management companion"
 APP_CURRENCY_SYMBOL = "₹"
 APP_CURRENCY_CODE = "INR"
@@ -18,7 +18,7 @@ APP_CURRENCY_CODE = "INR"
 # ------------------------------------------------------------------
 
 FEATURE_SUMMARY = (
-    "Finance Tracker includes:\n"
+    "Arthflow includes:\n"
     "1) Transactions — log income and expenses with categories and dates.\n"
     "2) Goals — create savings targets and track progress.\n"
     "3) Reminders — set alerts for bills and financial tasks."
@@ -61,7 +61,7 @@ AUTHENTICATED_RULES = [
     "or how to use this app. Nothing else is in your scope.",
     "If the user asks anything unrelated to finance or this app (politics, sports, news, "
     "general knowledge, celebrities, technology, etc.), respond EXACTLY with: "
-    "'I\'m your Finance Tracker assistant — I can only help with your finances, goals, "
+    "'I\'m your Arthflow assistant — I can only help with your finances, goals, "
     "transactions, and reminders. Is there something about your finances I can help you with?'",
     "Do NOT attempt to answer out-of-scope questions even partially. Do NOT say 'I don\'t have "
     "real-time info but...' — just redirect firmly and politely.",
@@ -78,10 +78,10 @@ GUEST_RULES = [
     "Provide general financial education and best practices.",
     "Be welcoming and encouraging.",
     # Out-of-scope handling
-    "You ONLY answer questions about personal finance concepts or how Finance Tracker works.",
+    "You ONLY answer questions about personal finance concepts or how Arthflow works.",
     "If the user asks anything unrelated to finance (politics, news, sports, general knowledge, "
     "celebrities, etc.), respond EXACTLY with: "
-    "'I\'m the Finance Tracker assistant — I can only help with personal finance topics. "
+    "'I\'m the Arthflow assistant — I can only help with personal finance topics. "
     "Feel free to ask me about budgeting, saving, or how this app works!'",
     "Do NOT attempt to partially answer out-of-scope questions.",
 ]

@@ -5,8 +5,8 @@ class EmailService {
     this.webhookUrl   = process.env.MAKE_EMAIL_WEBHOOK_URL;
     this.fromOTP      = 'arthflow0@gmail.com';
     this.fromReminder = 'arthflow0@gmail.com';
-    this.appName      = 'Finance Tracker';
-    this.appUrl       = process.env.APP_URL || 'https://financetracker.space';
+    this.appName      = 'Arthflow';
+    this.appUrl       = process.env.APP_URL || 'https://arthflow.vercel.app';
     this.accentColor  = '#2563EB';
   }
 
@@ -23,7 +23,7 @@ class EmailService {
 
   async sendOTPEmail(email, otp) {
     try {
-      const subject = `${otp} is your Finance Tracker verification code`;
+      const subject = `${otp} is your Arthflow verification code`;
       const html = this.generateOTPEmailTemplate(otp);
 
       if (!this.webhookUrl) {

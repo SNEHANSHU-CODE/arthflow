@@ -4,7 +4,6 @@ const notificationService = require('./notificationService');
 const { google } = require('googleapis');
 const { getGoogleTokens, saveGoogleTokens } = require('../utils/googleTokenCache');
 const User = require('../models/userModel');
-const { oauth2Client } = require('../utils/googleOauth');
 
 class ReminderService {
   async getReminders(userId) {
@@ -13,6 +12,12 @@ class ReminderService {
 
   async ensureGoogleAccess(userId) {
     try {
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CALENDAR_CLIENT_ID,
+        process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+        process.env.GOOGLE_CALENDAR_REDIRECT_URI
+      );
+
       // Try to get tokens from Redis first
       let tokens = await getGoogleTokens(userId);
 
@@ -216,13 +221,17 @@ class ReminderService {
   async getUpcomingReminders() {
     const now = new Date();
     const windowEnd = new Date(now.getTime() + 5 * 60 * 1000);
-    return await Reminder.find({ date: { $gte: now, $lte: windowEnd } }).populate('userId', 'email');
+    const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000); // look back 24 hours
+    return await Reminder.find({
+      date: { $gte: windowStart, $lte: windowEnd },
+      isSent: false
+    }).populate('userId', 'email');
   }
 
   shouldSendNow(reminderDate) {
     const now = new Date();
     const diff = Math.floor((reminderDate - now) / (60 * 1000));
-    return diff >= 0 && diff <= 5;
+    return diff <= 5;
   }
 
   async checkAndSendReminders() {
@@ -234,6 +243,9 @@ class ReminderService {
       
       try {
         await emailService.sendReminderEmail(userId.email, { title, date, description });
+
+        // Mark as sent so the next cron tick doesn't re-send it
+        await Reminder.findByIdAndUpdate(reminder._id, { isSent: true });
 
         // Fire in-app notification after successful email send
         notificationService.createReminderNotification(userId._id, reminder).catch(err =>

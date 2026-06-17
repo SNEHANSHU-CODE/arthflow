@@ -102,18 +102,19 @@ router.post('/generate-report', async (req, res) => {
       });
     }
 
-    // Send file as download
     res.download(filePath, fileName, (err) => {
       if (err) {
         console.error('Error sending file:', err);
-      } else {
-        // Clean up: delete file after sending
-        setTimeout(() => {
-          fs.unlink(filePath, (deleteErr) => {
-            if (deleteErr) console.error('Error deleting temp file:', deleteErr);
-          });
-        }, 1000);
       }
+      
+      // Clean up: delete file after sending (regardless of success/failure)
+      setTimeout(() => {
+        fs.unlink(filePath, (deleteErr) => {
+          if (deleteErr && deleteErr.code !== 'ENOENT') {
+            console.error('Error deleting temp file:', deleteErr);
+          }
+        });
+      }, 1000);
     });
 
   } catch (error) {

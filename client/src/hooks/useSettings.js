@@ -1,5 +1,5 @@
  import { useContext } from 'react';
-import { SettingsContext } from '../context/SettingsContext';
+import { SettingsContext } from '../context/SettingsContextDefinition';
 
 /**
  * Hook to consume the SettingsContext.

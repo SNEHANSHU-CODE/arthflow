@@ -23,7 +23,7 @@ def _enrich(doc: Dict[str, Any]) -> Dict[str, Any]:
 
     reminder_date: Optional[datetime] = doc.get("date")
     if reminder_date:
-        now = datetime.now()
+        now = datetime.utcnow()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
 
@@ -94,7 +94,7 @@ class ReminderService:
     ) -> List[Dict[str, Any]]:
         """Return reminders due within the next *days* days."""
         try:
-            now = datetime.now()
+            now = datetime.utcnow()
             cursor = self.collection.find(
                 {
                     "userId": ObjectId(user_id),
@@ -110,7 +110,7 @@ class ReminderService:
     async def get_today_reminders(self, user_id: str) -> List[Dict[str, Any]]:
         """Return reminders due today."""
         try:
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             cursor = self.collection.find(
                 {
                     "userId": ObjectId(user_id),
@@ -127,7 +127,7 @@ class ReminderService:
         """Return reminders whose date has already passed."""
         try:
             cursor = self.collection.find(
-                {"userId": ObjectId(user_id), "date": {"$lt": datetime.now()}}
+                {"userId": ObjectId(user_id), "date": {"$lt": datetime.utcnow()}}
             ).sort("date", -1)
             return [_enrich(doc) async for doc in cursor]
 
@@ -159,7 +159,7 @@ class ReminderService:
         week_offset: 0 = current week, 1 = next week, -1 = last week.
         """
         try:
-            now = datetime.now()
+            now = datetime.utcnow()
             week_start = (
                 now - timedelta(days=now.weekday())
             ).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -181,7 +181,7 @@ class ReminderService:
         Uses a single aggregation pipeline instead of four separate count queries.
         """
         try:
-            now = datetime.now()
+            now = datetime.utcnow()
             today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = today_start + timedelta(days=1)
 

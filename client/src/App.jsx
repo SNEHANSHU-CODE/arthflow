@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 
 import PWAManager from './pwa/PWAManager';
 import SettingsProvider from './context/SettingsContext';
-import { fetchUserPreferences } from './app/authSlice';
+import { fetchUserPreferences, logoutUser } from './app/authSlice';
 import sessionManager from './utils/sessionManager';
 
 import AppRouter from './routes/AppRouter'
@@ -30,7 +30,7 @@ function App() {
           () => {
             // Session expired callback
             console.log('Session expired due to inactivity');
-            dispatch({ type: 'auth/logout' });
+            dispatch(logoutUser());
           }
         );
         

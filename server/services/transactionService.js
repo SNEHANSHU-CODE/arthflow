@@ -159,6 +159,9 @@ class TransactionService {
     const skip = (page - 1) * limit;
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    if (sortBy !== 'createdAt') {
+      sortOptions.createdAt = sortOrder === 'desc' ? -1 : 1;
+    }
 
     // Execute query
     const transactions = await Transaction.find(query)
@@ -453,20 +456,22 @@ async getCategoryAnalysis(userId) {
   async getSpendingTrends(userId) {
     try {
       const currentDate = new Date();
-      const trends = [];
 
-      for (let i = 5; i >= 0; i--) {
+      const monthOffsets = [5, 4, 3, 2, 1, 0];
+      const trendsPromises = monthOffsets.map(async (i) => {
         const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
         const month = date.getMonth() + 1;
         const year = date.getFullYear();
 
         const summary = await Transaction.getMonthlySummary(userId, month, year);
-        trends.push({
+        return {
           month: date.toLocaleString('default', { month: 'long' }),
           year,
           ...summary
-        });
-      }
+        };
+      });
+
+      const trends = await Promise.all(trendsPromises);
 
       return {
         success: true,

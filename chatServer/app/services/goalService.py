@@ -29,7 +29,7 @@ def _enrich(doc: Dict[str, Any]) -> Dict[str, Any]:
 
     target_date: Optional[datetime] = doc.get("targetDate")
     if target_date:
-        days_remaining = (target_date - datetime.now()).days
+        days_remaining = (target_date - datetime.utcnow()).days
         doc["daysRemaining"] = days_remaining
         doc["isOverdue"] = days_remaining < 0 and doc.get("status") != "Completed"
     else:
@@ -141,7 +141,7 @@ class GoalService:
         try:
             query = {
                 "userId": ObjectId(user_id),
-                "targetDate": {"$lt": datetime.now()},
+                "targetDate": {"$lt": datetime.utcnow()},
                 "status": {"$ne": "Completed"},
             }
             cursor = self.collection.find(query).sort("targetDate", 1)
@@ -156,7 +156,7 @@ class GoalService:
     ) -> List[Dict[str, Any]]:
         """Return Active goals due within the next *days* days."""
         try:
-            now = datetime.now()
+            now = datetime.utcnow()
             query = {
                 "userId": ObjectId(user_id),
                 "targetDate": {"$gte": now, "$lte": now + timedelta(days=days)},

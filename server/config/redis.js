@@ -81,10 +81,9 @@ class RedisService {
       return this.client;
     } catch (error) {
       console.error('Failed to connect to Redis:', error);
-      
-      // Try alternative connection method
-      console.log('Trying alternative connection method...');
-      return this.connectAlternative();
+      this.isConnected = false;
+      this.client = null;
+      return null;
     }
   }
 

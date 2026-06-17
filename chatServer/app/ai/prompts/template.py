@@ -43,7 +43,7 @@ A healthy benchmark is 15–20% of take-home pay. On a ₹60,000 income that's �
 
 **3 actions:**
 1. Split Food into "Dining Out" vs "Groceries" in Transactions — find the bigger leak.
-2. Set a Food budget cap in the Budget section; Finance Tracker will alert you before you hit it.
+2. Set a Food budget cap in the Budget section; Arthflow will alert you before you hit it.
 3. Cooking at home 5 nights a week typically cuts food spend by 25–35%.
 </assistant>
 

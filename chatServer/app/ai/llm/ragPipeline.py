@@ -6,6 +6,7 @@ Runs periodically via APScheduler (same scheduler used by notification_poller).
 """
 import logging
 import asyncio
+import functools
 from typing import List, Optional
 
 from bson import ObjectId
@@ -38,11 +39,16 @@ class RAGPipeline:
                 vault.originalName, vault.mimeType, vault.size)
 
             try:
-                chunks = DocumentService.process_vault_document(
-                    base64_data=vault.data,
-                    original_name=vault.originalName,
-                    mime_type=vault.mimeType,
-                    password=vault.pdfPassword or "",
+                loop = asyncio.get_running_loop()
+                chunks = await loop.run_in_executor(
+                    None,  # uses default ThreadPoolExecutor
+                    functools.partial(
+                        DocumentService.process_vault_document,
+                        base64_data=vault.data,
+                        original_name=vault.originalName,
+                        mime_type=vault.mimeType,
+                        password=vault.pdfPassword or "",
+                    )
                 )
                 if not chunks:
                     logger.warning("No text extracted from '%s' — marking processed anyway", vault.originalName)

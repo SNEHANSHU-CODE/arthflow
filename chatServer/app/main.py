@@ -120,6 +120,7 @@ async def lifespan(app: FastAPI):
         )
 
         scheduler.start()
+        app.state.scheduler = scheduler
         logger.info(
             f"✅ RAG Pipeline scheduler started "
             f"(runs every {settings.CRON_INTERVAL_SECONDS} seconds)"

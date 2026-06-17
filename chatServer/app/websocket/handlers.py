@@ -129,6 +129,7 @@ class SocketEventHandlers:
         
         RESPONSE: Only {isAuthenticated: bool, username: str}
         """
+        data = data or {}
         token = data.get("token")
         provided_user_id = data.get("userId")
         
@@ -170,11 +171,12 @@ class SocketEventHandlers:
     async def handle_send_message(self, sid: str, data: dict):
         """
         Handle incoming message
-        Dispatches to response handler for LLM processing
+        Dispatches to response handler for LLM processing with token-by-token streaming.
         
-        RESPONSE: Only typing status and bot response
+        RESPONSE: Emissions of bot_response_chunk (isFirst, isLast)
         """
         try:
+            data = data or {}
             message = data.get("message", "").strip()
             conversation_history = data.get("conversationHistory", [])
             request_id = data.get("requestId")
@@ -189,66 +191,207 @@ class SocketEventHandlers:
                 }, room=sid)
                 return
             
-            # Get session
-            session = self.get_session(sid)
-            is_authenticated = session.get("is_authenticated", False)
-            user_id = session.get("user_id")
-            username = session.get("username", "guest")
-            
             # Send typing indicator
             await self.sio.emit('bot_typing', {
                 "isTyping": True,
                 "timestamp": datetime.utcnow().isoformat(),
             }, room=sid)
-            
-            # Get response from handler
+
+            # Inline imports to avoid circular dependency issues during startup
+            from app.ai.orchestrator import get_orchestrator
+            from app.core.database import Database
+            from app.ai.config import llm_settings
+            from app.ai.llm.init import llm_provider
+            from langchain_core.messages import SystemMessage, HumanMessage
+            from app.ai.prompts.guestTemplate import (
+                GUEST_SYSTEM_PROMPT,
+                GuestPromptBuilder,
+                GUEST_SIGNIN_PROMPT
+            )
+            from app.ai.utils.pii_masker import mask_message, get_safety_message
+            from app.ai.utils.fast_classifier import classify
+            from app.services.vaultService import vault_service
+
+            # Get session
+            session = self.get_session(sid)
+            is_authenticated = session.get("is_authenticated", False)
+            user_id = session.get("user_id")
+            username = session.get("username", "guest")
+
+            # PII masking
+            pii_result = mask_message(message)
+            masked_msg = pii_result.masked
+            safety_message = get_safety_message(pii_result)
+            prefix_text = ""
+            if pii_result.has_sensitive_info and safety_message:
+                prefix_text = f"{safety_message}\n\n"
+
+            # Initialize orchestrator & database
+            db = Database.get_db()
+            orchestrator = await get_orchestrator(db)
+
+            messages = []
+            llm = None
+            memory = None
+            metadata = {}
+            provider = "fallback"
+            is_static_guest_response = False
+            static_guest_text = ""
+
             try:
                 if is_authenticated and vault_id:
-                    # RAG mode — user asking about a specific PDF
-                    response = await MessageResponseHandler.handle_rag_message(
+                    # RAG Mode
+                    # Validate Vault Ownership
+                    vault = await vault_service.get_by_id(vault_id, user_id=user_id)
+                    if not vault:
+                        await self.sio.emit('error', {
+                            "message": "Vault not found",
+                            "code": "VAULT_NOT_FOUND",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }, room=sid)
+                        return
+
+                    messages, llm, provider, memory, rag_metadata = await orchestrator.prepare_rag_query(
+                        query=masked_msg,
                         user_id=user_id,
-                        username=username,
-                        message=message,
                         vault_id=vault_id,
                     )
+                    metadata = {
+                        "response_type": "rag",
+                        "vault_id": vault_id,
+                        **rag_metadata
+                    }
                 elif is_authenticated:
-                    response = await MessageResponseHandler.handle_authenticated_message(
+                    # Standard Authenticated Mode
+                    messages, llm, provider, memory = await orchestrator.prepare_authenticated_query(
                         user_id=user_id,
-                        username=username,
-                        message=message,
-                        conversation_history=conversation_history
+                        query=masked_msg,
                     )
+                    metadata = {"response_type": "authenticated"}
                 else:
-                    response = await MessageResponseHandler.handle_guest_message(message)
-                
-                # Stop typing
+                    # Guest Mode
+                    intent_result = classify(masked_msg)
+                    needs_data = intent_result.requires_auth or any(
+                        keyword in masked_msg.lower()
+                        for keyword in ["my", "i spent", "my transactions", "my goals", "my budget", "my history", "how much did i"]
+                    )
+                    if needs_data:
+                        is_static_guest_response = True
+                        static_guest_text = GUEST_SIGNIN_PROMPT
+                        provider = "informational"
+                        metadata = {"response_type": "guest", "needs_authentication": True}
+                    else:
+                        prompt_vars = GuestPromptBuilder.build_guest_prompt(user_input=masked_msg)
+                        system_prompt = GUEST_SYSTEM_PROMPT.format(**prompt_vars)
+                        messages = [
+                            SystemMessage(content=system_prompt),
+                            HumanMessage(content=masked_msg)
+                        ]
+                        provider = llm_settings.DEFAULT_LLM
+                        llm = await llm_provider.get_default_llm()
+                        metadata = {"response_type": "guest", "needs_authentication": False}
+
+                # Stop typing immediately since streaming starts
                 await self.sio.emit('bot_typing', {
                     "isTyping": False,
                     "timestamp": datetime.utcnow().isoformat(),
                 }, room=sid)
-                
-                # Send response
-                response_data = {
-                    "messageId": f"msg-{datetime.utcnow().timestamp()}-{request_id}",
-                    "message": response["text"],
-                    "provider": response.get("provider", "gemini"),
-                    "metadata": response.get("metadata", {}),
+
+                # Generate unique message ID
+                message_id = f"msg-{datetime.utcnow().timestamp()}-{request_id}"
+
+                # Emit first chunk (isFirst=True) to initialize client container
+                await self.sio.emit('bot_response_chunk', {
+                    "messageId": message_id,
+                    "chunk": prefix_text,
+                    "isFirst": True,
+                    "isLast": False,
+                    "provider": provider,
+                    "metadata": None,
                     "timestamp": datetime.utcnow().isoformat(),
-                }
-                
-                await self.sio.emit('bot_response', response_data, room=sid)
-                
-                # Chat history is persisted in MongoDB by ChatMemory — no RAM storage needed
-                
+                }, room=sid)
+
+                accumulated_text = prefix_text
+
+                if is_static_guest_response:
+                    accumulated_text += static_guest_text
+                    await self.sio.emit('bot_response_chunk', {
+                        "messageId": message_id,
+                        "chunk": static_guest_text,
+                        "isFirst": False,
+                        "isLast": False,
+                        "provider": provider,
+                        "metadata": None,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }, room=sid)
+                else:
+                    # Stream tokens from LLM
+                    try:
+                        async for chunk in llm.astream(messages):
+                            token = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                            accumulated_text += token
+                            await self.sio.emit('bot_response_chunk', {
+                                "messageId": message_id,
+                                "chunk": token,
+                                "isFirst": False,
+                                "isLast": False,
+                                "provider": provider,
+                                "metadata": None,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            }, room=sid)
+                    except Exception as stream_error:
+                        logger.warning("Stream failed for primary provider, attempting fallback...")
+                        if provider != "gemini":
+                            try:
+                                fallback_llm = await llm_provider.get_gemini_llm()
+                                async for chunk in fallback_llm.astream(messages):
+                                    token = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                                    accumulated_text += token
+                                    await self.sio.emit('bot_response_chunk', {
+                                        "messageId": message_id,
+                                        "chunk": token,
+                                        "isFirst": False,
+                                        "isLast": False,
+                                        "provider": "gemini",
+                                        "metadata": None,
+                                        "timestamp": datetime.utcnow().isoformat(),
+                                    }, room=sid)
+                                provider = "gemini"
+                            except Exception as fallback_err:
+                                logger.error("Fallback stream failed as well: %s", fallback_err)
+                                raise fallback_err
+                        else:
+                            raise stream_error
+
+                # Save complete messages to MongoDB
+                if is_authenticated and memory:
+                    await memory.add_message(message, message_type="human")
+                    await memory.add_message(accumulated_text, message_type="ai", metadata={"provider": provider, **metadata})
+
+                # Emit final chunk (isLast=True)
+                await self.sio.emit('bot_response_chunk', {
+                    "messageId": message_id,
+                    "chunk": "",
+                    "isFirst": False,
+                    "isLast": True,
+                    "provider": provider,
+                    "metadata": metadata,
+                    "response": accumulated_text,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }, room=sid)
+
             except Exception as e:
                 logger.error(f"❌ Error generating response: {e}", exc_info=True)
-                
                 await self.sio.emit('bot_typing', {"isTyping": False}, room=sid)
-                await self.sio.emit('bot_response', {
+                error_msg = "I'm having trouble processing your request. Please try again."
+                await self.sio.emit('bot_response_chunk', {
                     "messageId": f"error-{datetime.utcnow().timestamp()}",
-                    "message": "I'm having trouble processing your request. Please try again.",
+                    "chunk": error_msg,
+                    "isFirst": True,
+                    "isLast": True,
                     "provider": "fallback",
                     "metadata": {"error": True, "response_type": "error"},
+                    "response": error_msg,
                     "timestamp": datetime.utcnow().isoformat(),
                 }, room=sid)
         
@@ -336,11 +479,12 @@ class SocketEventHandlers:
     async def handle_rate_message(self, sid: str, data: dict):
         """Handle message rating"""
         try:
+            data = data or {}
             message_id = data.get("messageId")
             rating = data.get("rating")
             
             session = self.get_session(sid)
-            user_id = session.get("user_data", {}).get("user_id")
+            user_id = session.get("user_id")
             
             logger.info(f"⭐ Rating from {user_id}: {message_id} → {rating}")
             

@@ -346,6 +346,36 @@ Response Structure:
     # Main entry point
     # ------------------------------------------------------------------
 
+    async def prepare_authenticated_query(
+        self,
+        user_id: str,
+        query: str,
+        provider: Optional[str] = None,
+    ) -> tuple:
+        """
+        Compile state, context, and fetch LLM for authenticated query.
+        Returns: (messages, llm, provider, memory)
+        """
+        intent = _classify_intent(query)
+        logger.info(f"🔍 Intent detected: {intent}")
+
+        context = await self._fetch_user_context(user_id, intent, query)
+        system_prompt = self._build_system_prompt(context, intent)
+
+        memory = self.get_user_memory(user_id)
+        history = await memory.get_finance_history()
+
+        if provider is None:
+            provider = llm_settings.DEFAULT_LLM
+        llm = await llm_provider.get_llm(provider)
+
+        messages = [
+            SystemMessage(content=system_prompt),
+            *history,
+            HumanMessage(content=query),
+        ]
+        return messages, llm, provider, memory
+
     async def process_authenticated_query(
         self,
         user_id: str,
@@ -361,35 +391,7 @@ Response Structure:
         """
         try:
             logger.info(f"📝 Processing authenticated query for user {user_id}")
-
-            # Step 1: Classify intent (fast keyword scan)
-            intent = _classify_intent(query)
-            logger.info(f"🔍 Intent detected: {intent}")
-
-            # Step 2: Fetch relevant user data
-            context = await self._fetch_user_context(user_id, intent, query)
-
-            # Step 3: Build system prompt with real data
-            system_prompt = self._build_system_prompt(context, intent)
-
-            # Step 4: Load history FIRST — before saving current query.
-            # BUG FIX: previously query was saved before get_conversation_history(),
-            # causing the current query to appear TWICE in LLM messages:
-            # once inside *history and once as the final HumanMessage(query).
-            memory = self.get_user_memory(user_id)
-            history = await memory.get_finance_history()
-
-            # Step 5: Choose LLM
-            if provider is None:
-                provider = llm_settings.DEFAULT_LLM
-            llm = await llm_provider.get_llm(provider)
-
-            # Step 6: Build messages for LLM — SINGLE CALL
-            messages = [
-                SystemMessage(content=system_prompt),
-                *history,
-                HumanMessage(content=query),
-            ]
+            messages, llm, provider, memory = await self.prepare_authenticated_query(user_id, query, provider)
 
             logger.info(f"🧠 Invoking LLM ({provider}) for authenticated user...")
             response = None
@@ -455,6 +457,54 @@ Response Structure:
     # and falls through to the normal authenticated chat pipeline.
     RAG_RELEVANCE_THRESHOLD: float = 0.75
 
+    async def prepare_rag_query(
+        self,
+        query: str,
+        user_id: str,
+        vault_id: Optional[str] = None,
+        provider: Optional[str] = None,
+    ) -> tuple:
+        """
+        Compile state, context, and fetch LLM for RAG query.
+        Returns: (messages, llm, provider, memory, metadata)
+        """
+        rag_context, document_name, top_score = await RAGQueryService.get_context(
+            query=query,
+            user_id=user_id,
+            vault_id=vault_id,
+            top_k=5,
+        )
+
+        # ── Smart hybrid: fall back to normal finance AI if score too low ──
+        if not rag_context or top_score < self.RAG_RELEVANCE_THRESHOLD:
+            logger.info(
+                "📊 RAG score %.3f below threshold %.2f — falling back to finance AI for query: %s",
+                top_score, self.RAG_RELEVANCE_THRESHOLD, query,
+            )
+            messages, llm, provider, memory = await self.prepare_authenticated_query(user_id, query, provider)
+            return messages, llm, provider, memory, {"is_rag": False}
+
+        memory = self.get_user_memory(user_id)
+        history = await memory.get_rag_history(document_name)
+
+        prompt_vars = RAGPromptBuilder.build(
+            user_input=query,
+            rag_context=rag_context,
+            document_name=document_name,
+            chat_history=history,
+        )
+        formatted = RAG_CHAT_TEMPLATE.format_messages(**prompt_vars)
+
+        if provider is None:
+            provider = llm_settings.DEFAULT_LLM
+        llm = await llm_provider.get_llm(provider)
+
+        metadata = {
+            "document_name": document_name,
+            "is_rag": True,
+        }
+        return formatted, llm, provider, memory, metadata
+
     async def process_rag_query(
         self,
         query: str,
@@ -479,50 +529,18 @@ Response Structure:
         """
         try:
             logger.info("📄 Processing RAG query for user %s (vault=%s)", user_id, vault_id)
+            messages, llm, provider, memory, metadata = await self.prepare_rag_query(query, user_id, vault_id, provider)
 
-            # Step 1 + 2: Embed query → vector search → formatted context + score
-            rag_context, document_name, top_score = await RAGQueryService.get_context(
-                query=query,
-                user_id=user_id,
-                vault_id=vault_id,
-                top_k=5,
-            )
-
-            # ── Smart hybrid: fall back to normal finance AI if score too low ──
-            if not rag_context or top_score < self.RAG_RELEVANCE_THRESHOLD:
-                logger.info(
-                    "📊 RAG score %.3f below threshold %.2f — falling back to finance AI for query: %s",
-                    top_score, self.RAG_RELEVANCE_THRESHOLD, query,
-                )
+            if not metadata.get("is_rag", False):
                 return await self.process_authenticated_query(user_id, query, provider)
-
-            # Step 3: Load history FIRST — same fix as authenticated pipeline.
-            # BUG FIX: query was saved before get_conversation_history(),
-            # causing the current query to appear twice in the prompt.
-            memory = self.get_user_memory(user_id)
-            history = await memory.get_rag_history(document_name)
-
-            # Step 4: Build RAG prompt
-            prompt_vars = RAGPromptBuilder.build(
-                user_input=query,
-                rag_context=rag_context,
-                document_name=document_name,
-                chat_history=history,
-            )
-            formatted = RAG_CHAT_TEMPLATE.format_messages(**prompt_vars)
-
-            # Step 5: LLM call — reuses existing llm_provider (no new logic)
-            if provider is None:
-                provider = llm_settings.DEFAULT_LLM
-            llm = await llm_provider.get_llm(provider)
 
             logger.info("🧠 Invoking LLM (%s) for RAG query...", provider)
             try:
-                response = await llm.ainvoke(formatted)
+                response = await llm.ainvoke(messages)
             except Exception as e:
                 logger.error("RAG LLM call failed with %s: %s — trying Gemini", provider, e)
                 fallback_llm = await llm_provider.get_gemini_llm()
-                response = await fallback_llm.ainvoke(formatted)
+                response = await fallback_llm.ainvoke(messages)
                 provider = "gemini"
 
             response_text = (
@@ -539,7 +557,7 @@ Response Structure:
                 "user_id": user_id,
                 "is_authenticated": True,
                 "is_rag": True,
-                "document_name": document_name,
+                "document_name": metadata.get("document_name", ""),
                 "provider": provider,
                 "query": query,
                 "response": response_text,

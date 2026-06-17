@@ -4,7 +4,6 @@ const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
-const { json } = require('body-parser');
 
 // Load environment variables
 dotenv.config();
@@ -22,8 +21,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 console.log(`📊 Analytics Server starting in ${NODE_ENV} mode...`);
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB inside startServer() to avoid duplicate initialization
 
 async function startServer() {
   await connectDB();
@@ -42,7 +40,7 @@ async function startServer() {
 
   // Middleware
   app.use(cors(corsOptions));
-  app.use(json());
+  app.use(express.json());
 
   // Health check endpoint (before Apollo middleware)
   app.get('/health', (req, res) => {
@@ -83,7 +81,6 @@ monthlyReportCron.start();
   app.use(
     '/graphql',
     cors(corsOptions),
-    json(),
     expressMiddleware(server, {
       context: async ({ req }) => {
         try {
@@ -96,8 +93,12 @@ monthlyReportCron.start();
             req
           };
         } catch (error) {
-          console.error('❌ Auth Error:', error.message);
-          throw new Error(error.message);
+          // Fallback to anonymous user for public/introspection queries
+          return {
+            user: null,
+            token: null,
+            req
+          };
         }
       },
     }),
@@ -111,7 +112,9 @@ monthlyReportCron.start();
     console.log(`📊 GraphQL Endpoint: http://localhost:${PORT}/graphql`);
     console.log(`📄 PDF Service: http://localhost:${PORT}/api/pdf`);
     console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
-    console.log(`🗄️  Database: ${process.env.MONGO_URI}`);
+    const dbUri = process.env.MONGO_URI || '';
+    const sanitizedDbUri = dbUri.replace(/:([^@]+)@/, ':******@');
+    console.log(`🗄️  Database: ${sanitizedDbUri}`);
     console.log(`${'═'.repeat(50)}\n`);
   });
 

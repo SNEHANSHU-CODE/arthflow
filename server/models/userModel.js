@@ -42,8 +42,7 @@ const userSchema = new mongoose.Schema({
     },
     createdAt: {
       type: Date,
-      default: Date.now,
-      expires: 604800 // 7 days
+      default: Date.now
     }
   }],
   lastLoginAt: {

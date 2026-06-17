@@ -95,7 +95,7 @@ async def chat_query(
         logger.info(f"Processing chat query - Authenticated: {bool(user_id)}")
         
         # Validate provider
-        if message.provider not in ["groq", "gemini"]:
+        if message.provider is not None and message.provider not in ["groq", "gemini"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Provider must be 'groq' or 'gemini'"

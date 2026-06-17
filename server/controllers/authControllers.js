@@ -134,7 +134,6 @@ class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'None',
-        secure: true,
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
@@ -240,7 +239,6 @@ class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'None',
-        secure: true,
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
@@ -333,8 +331,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
-        secure: true
+        sameSite: 'None'
       });
 
       return ResponseUtils.success(res, null, 'Logout successful');
@@ -511,8 +508,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
-        secure: true
+        sameSite: 'None'
       });
 
       // Log password change for security (optional)
@@ -570,8 +566,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
-        secure: true
+        sameSite: 'None'
       });
 
       // Log account deletion for audit purposes
@@ -620,7 +615,7 @@ class AuthController {
 
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         sameSite: 'None',
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
@@ -648,8 +643,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
-        secure: true
+        sameSite: 'None'
       });
 
       return ResponseUtils.success(res, null, 'Logged out from all devices');

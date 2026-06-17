@@ -12,6 +12,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.concurrency import run_in_threadpool
 
 from .shared.schemas import ImportResponse
 from .parsers.pdf_parser   import parse_pdf, PDFPasswordError
@@ -53,7 +54,7 @@ async def import_pdf(
 
     try:
         pdf_bytes    = await file.read()
-        transactions = parse_pdf(pdf_bytes, password=password or None)
+        transactions = await run_in_threadpool(parse_pdf, pdf_bytes, password=password or None)
 
     except PDFPasswordError as e:
         # Return structured response — frontend checks needs_password flag
@@ -96,7 +97,7 @@ async def import_csv(file: UploadFile = File(...)):
 
     try:
         csv_bytes    = await file.read()
-        transactions = parse_csv(csv_bytes)
+        transactions = await run_in_threadpool(parse_csv, csv_bytes)
     except ValueError as e:
         return ImportResponse(success=False, count=0, transactions=[], message=str(e))
     except Exception as e:
@@ -127,7 +128,7 @@ async def import_excel(file: UploadFile = File(...)):
 
     try:
         excel_bytes  = await file.read()
-        transactions = parse_excel(excel_bytes)
+        transactions = await run_in_threadpool(parse_excel, excel_bytes)
     except ImportError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except ValueError as e:

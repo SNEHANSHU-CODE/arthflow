@@ -110,11 +110,12 @@ export const selectFilteredGoals = createSelector(
           aValue = a.name.toLowerCase();
           bValue = b.name.toLowerCase();
           break;
-        case 'priority':
+        case 'priority': {
           const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
           aValue = priorityOrder[a.priority] || 0;
           bValue = priorityOrder[b.priority] || 0;
           break;
+        }
         default:
           aValue = a[sortBy];
           bValue = b[sortBy];

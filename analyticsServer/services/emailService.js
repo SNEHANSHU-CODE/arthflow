@@ -4,8 +4,8 @@ class EmailService {
   constructor() {
     this.webhookUrl   = process.env.MAKE_EMAIL_WEBHOOK_URL;
     this.from         = 'arthflow0@gmail.com';
-    this.appName      = 'Finance Tracker';
-    this.appUrl       = process.env.APP_URL || 'https://financetracker.space';
+    this.appName      = 'Arthflow';
+    this.appUrl       = process.env.APP_URL || 'https://arthflow.vercel.app';
   }
 
   sanitizeText(input) {

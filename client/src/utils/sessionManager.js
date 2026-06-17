@@ -3,7 +3,7 @@
  * Handles login/logout with session tracking
  */
 
-const SESSION_KEY = 'finance_tracker_session';
+const SESSION_KEY = 'arthflow_session';
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export const sessionManager = {

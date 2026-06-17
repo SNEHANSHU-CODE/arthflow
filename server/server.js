@@ -10,6 +10,8 @@ const emailService = require('./services/emailService');
 const reminderService = require('./services/reminderService');
 const queryLogger = require('./middleware/queryLogger');
 
+const { errorHandler } = require('./utils/errorHandler');
+
 // Importing all Routes
 const authRoutes = require('./routes/authRoutes');
 const resetPasswordRoutes = require('./routes/resetPasswordRoute');
@@ -73,6 +75,9 @@ app.get('/api/ping', (req, res) => {
   res.send('pong');
 });
 
+// Centralized error handler (must be registered after all routes)
+app.use(errorHandler);
+
 // Initialize token cleanup job
 const { initializeTokenCleanupJob } = require('./jobs/tokenCleanup');
 
@@ -112,11 +117,11 @@ initializeRedis();
 //Send reminder in every 5 min
 function startReminderChecker() {
   console.log('Reminder email service started...');
-  setInterval(() => {
+  setInterval(async () => {
   try {
-    reminderService.checkAndSendReminders();
+    await reminderService.checkAndSendReminders();
   } catch (err) {
-    console.error('Reminder check failed (unhandled):', err);
+    console.error('[ReminderCron] check failed:', err.message);
   }
 }, 5 * 60 * 1000);
 }

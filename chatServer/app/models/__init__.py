@@ -10,7 +10,7 @@ from app.models.goalModel import GoalModel, GoalSummary
 from app.models.reminderModel import ReminderModel, ReminderCount
 from app.models.budgetModel import BudgetModel, BudgetSummary
 from app.models.userModel import UserModel, UserPublic, UserInDB
-from app.models.notificaitonModel import NotificationModel, NotificationOut
+from app.models.notificationModel import NotificationModel, NotificationOut
 
 __all__ = [
     "PyObjectId",

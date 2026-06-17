@@ -12,31 +12,19 @@
  * - Provides locale-aware formatters
  */
 
-import React, { createContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { updatePreferences as updateReduxPreferences } from '../app/authSlice';
+import { SettingsContext, CURRENCY_CONFIG } from './SettingsContextDefinition';
 
 // Storage keys
-const STORAGE_KEY = 'finance-tracker-preferences';
+const STORAGE_KEY = 'arthflow-preferences';
 
 // Default preferences
 const DEFAULT_PREFERENCES = {
   currency: 'INR',
   theme: 'light',
 };
-
-// Currency configuration — exported so other files can reference it directly
-export const CURRENCY_CONFIG = {
-  INR: { symbol: '₹', locale: 'en-IN', code: 'INR', decimals: 0 },
-  USD: { symbol: '$', locale: 'en-US', code: 'USD', decimals: 2 },
-  EUR: { symbol: '€', locale: 'de-DE', code: 'EUR', decimals: 2 },
-  GBP: { symbol: '£', locale: 'en-GB', code: 'GBP', decimals: 2 },
-  CAD: { symbol: 'C$', locale: 'en-CA', code: 'CAD', decimals: 2 },
-  AUD: { symbol: 'A$', locale: 'en-AU', code: 'AUD', decimals: 2 },
-};
-
-// Context — exported so useSettings.js can consume it
-export const SettingsContext = createContext(null);
 
 /**
  * Load preferences from localStorage

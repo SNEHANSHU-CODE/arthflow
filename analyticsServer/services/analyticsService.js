@@ -79,7 +79,7 @@ class AnalyticsService {
       const transactions = await Transaction.find({
         userId,
         date: { $gte: start, $lte: end }
-      }).sort({ date: -1 }).limit(10).lean(); // Use .lean() for performance
+      }).sort({ date: -1, createdAt: -1 }).limit(10).lean(); // Use .lean() for performance
 
       // Calculate summary from ALL transactions in range using aggregation for accuracy
       const allTransactions = await Transaction.find({
@@ -559,6 +559,14 @@ class AnalyticsService {
         monthYearConditions.push({ month: m, year: y });
         m++;
         if (m > 12) { m = 1; y++; }
+      }
+
+      // Guard: if no valid months could be computed (e.g., invalid date inputs),
+      // return empty result instead of sending $or:[] to MongoDB
+      if (monthYearConditions.length === 0) {
+        const empty = { message: 'No budget set for this period', categories: [], overallPerformance: 'N/A', recommendations: [] };
+        this.setCache(cacheKey, empty);
+        return empty;
       }
 
       const budgetDocs = await Budget.find({

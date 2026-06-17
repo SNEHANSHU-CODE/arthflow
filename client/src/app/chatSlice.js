@@ -216,6 +216,59 @@ const chatSlice = createSlice({
       state.loading = false;
     },
 
+    addBotResponseChunk: (state, action) => {
+      const { messageId, chunk, isFirst, isLast, provider, metadata, isError, response } = action.payload;
+
+      if (isFirst) {
+        // Create new bot message placeholder with isStreaming = true
+        const botMessage = {
+          id: messageId || `bot-${Date.now()}`,
+          type: 'bot',
+          message: chunk || '',
+          timestamp: action.payload.timestamp || new Date().toISOString(),
+          provider: provider || null,
+          isError: isError || false,
+          metadata: metadata || null,
+          isStreaming: true,
+          rated: false,
+          rating: null,
+        };
+
+        const exists = state.messages.some(m => m.id === botMessage.id);
+        if (!exists) {
+          state.messages.push(botMessage);
+          state.lastMessageId = botMessage.id;
+          state.sessionStats.lastActivity = botMessage.timestamp;
+        }
+
+        state.isTyping = false;
+        state.loading = true;
+      } else {
+        // Find existing message and append chunk
+        const msg = state.messages.find(m => m.id === messageId);
+        if (msg) {
+          if (chunk) {
+            msg.message += chunk;
+          }
+          if (provider) msg.provider = provider;
+          if (isError) msg.isError = true;
+          if (metadata) msg.metadata = { ...msg.metadata, ...metadata };
+        }
+      }
+
+      if (isLast) {
+        const msg = state.messages.find(m => m.id === messageId);
+        if (msg) {
+          msg.isStreaming = false;
+          if (response) {
+            msg.message = response;
+          }
+        }
+        state.loading = false;
+        state.isTyping = false;
+      }
+    },
+
     setTyping: (state, action) => {
       state.isTyping = action.payload;
     },
@@ -351,6 +404,7 @@ const chatSlice = createSlice({
 export const {
   addUserMessage,
   addBotMessage,
+  addBotResponseChunk,
   setTyping,
   setConnected,
   setSuggestions,

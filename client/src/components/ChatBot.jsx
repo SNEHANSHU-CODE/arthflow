@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   FaHeadset,
   FaTimes,
@@ -25,6 +27,7 @@ import {
   connectSocket,
   disconnectSocket,
   addBotMessage,
+  addBotResponseChunk,
   addUserMessage,
   setTyping,
   setSuggestions,
@@ -66,12 +69,20 @@ const ChatBot = () => {
     'Guest'
   );
 
+  const isAtBottomRef = useRef(true);
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    isAtBottomRef.current = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
+  };
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
   useEffect(() => {
-    scrollToBottom();
+    if (isAtBottomRef.current) {
+      scrollToBottom();
+    }
   }, [messages, isTyping]);
 
   // ---------------------------------------------------------------
@@ -105,9 +116,9 @@ const ChatBot = () => {
       }
     };
 
-    const handleBotResponse = (data) => {
-      console.log('🤖 Bot response received:', data?.messageId);
-      dispatch(addBotMessage(data));
+    const handleBotResponseChunk = (data) => {
+      console.log('🤖 Bot response chunk received:', data?.messageId, 'isLast:', data?.isLast);
+      dispatch(addBotResponseChunk(data));
     };
 
     const handleBotTyping = (data) => {
@@ -127,7 +138,7 @@ const ChatBot = () => {
     chatService.on('disconnect', handleDisconnect);
     chatService.on('authenticated', handleAuthenticated);
     chatService.on('chat_history', handleChatHistory);
-    chatService.on('bot_response', handleBotResponse);
+    chatService.on('bot_response_chunk', handleBotResponseChunk);
     chatService.on('bot_typing', handleBotTyping);
     chatService.on('suggestions_update', handleSuggestionsUpdate);
     chatService.on('error', handleError);
@@ -140,7 +151,7 @@ const ChatBot = () => {
       chatService.off('disconnect', handleDisconnect);
       chatService.off('authenticated', handleAuthenticated);
       chatService.off('chat_history', handleChatHistory);
-      chatService.off('bot_response', handleBotResponse);
+      chatService.off('bot_response_chunk', handleBotResponseChunk);
       chatService.off('bot_typing', handleBotTyping);
       chatService.off('suggestions_update', handleSuggestionsUpdate);
       chatService.off('error', handleError);
@@ -241,16 +252,7 @@ const ChatBot = () => {
 
   const toggleFullscreen = () => setIsFullscreen(prev => !prev);
 
-  const formatMessage = (text) => {
-    if (!text) return '';
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    return parts.map((part, i) =>
-      part.match(urlRegex)
-        ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="message-link">{part}</a>
-        : part
-    );
-  };
+  // formatMessage removed in favor of ReactMarkdown
 
   const getChatWindowClasses = () =>
     `chat-window${isFullscreen ? ' fullscreen' : ''}`;
@@ -317,13 +319,13 @@ const ChatBot = () => {
           {/* RAG Docs Toggle — only shown to authenticated users */}
           {isAuthenticated && (
             <VaultRAGToggle
-              userId={user?.id || user?.userId || user?._id}
+              userId={user?.id || user?.userId || user?._id || ''}
               onVaultSelect={setActiveVault}
             />
           )}
 
           {/* Body */}
-          <div className="chat-body">
+          <div className="chat-body" onScroll={handleScroll}>
             {messages.length === 0 && (
               <div className="welcome-message">
                 <div className="welcome-icon-wrapper">
@@ -361,13 +363,17 @@ const ChatBot = () => {
 
             <div className="messages-container">
               {messages.map((msg) => (
-                <div key={msg.id} className={`message ${msg.type} ${msg.isError ? 'error' : ''}`}>
+                <div key={msg.id} className={`message ${msg.type} ${msg.isError ? 'error' : ''} ${msg.isStreaming ? 'streaming' : ''}`}>
                   <div className="message-avatar">
                     {msg.type === 'user' ? <FaUser /> : <FaRobot />}
                   </div>
                   <div className="message-content">
                     <div className="message-text">
-                      {formatMessage(msg.message)}
+                      {msg.type === 'bot' ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message || ''}</ReactMarkdown>
+                      ) : (
+                        msg.message
+                      )}
                     </div>
                     <div className="message-meta">
                       <span className="message-time">

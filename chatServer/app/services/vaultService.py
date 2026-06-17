@@ -84,7 +84,8 @@ class VaultService:
             vault_col = Database.vault_collection()
             projection = None if include_data else {"data": 0}
             docs = await vault_col.find(
-                {"userId": ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id}
+                {"userId": ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id},
+                projection
             ).sort("createdAt", -1).to_list(None)
 
             result = [VaultListItem(**doc) for doc in docs]

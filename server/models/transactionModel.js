@@ -248,6 +248,9 @@ transactionSchema.statics.getByUser = function(userId, options = {}) {
   
   const sortOptions = {};
   sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+  if (sortBy !== 'createdAt') {
+    sortOptions.createdAt = sortOrder === 'desc' ? -1 : 1;
+  }
   
   return this.find(query)
     .populate('goalId', 'name category targetAmount')
@@ -567,7 +570,7 @@ transactionSchema.statics.search = function(userId, searchTerm, options = {}) {
   
   return this.find(query)
     .populate('goalId', 'name category')
-    .sort({ score: { $meta: 'textScore' }, date: -1 })
+    .sort({ score: { $meta: 'textScore' }, date: -1, createdAt: -1 })
     .limit(limit);
 };
 

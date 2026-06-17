@@ -91,6 +91,8 @@
 .chat-window.fullscreen {
   top: 5.2rem;
   bottom: 0;
+  left: 0;
+  margin: 0 auto;
   right: 0;
   width: 100%;
   max-width: 860px;
@@ -834,4 +836,23 @@
   .chat-input-container {
     padding: 16px 20px;
   }
+}
+
+/* ===== STREAMING CARET CURSOR ===== */
+.message.bot.streaming .message-text::after {
+  content: '▋';
+  display: inline-block;
+  color: #667eea;
+  animation: streamingBlink 0.8s steps(2, start) infinite;
+  margin-left: 4px;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+@keyframes streamingBlink {
+  to { visibility: hidden; }
+}
+
+.messages-container {
+  scroll-behavior: smooth;
 }

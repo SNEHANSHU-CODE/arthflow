@@ -80,8 +80,11 @@ class TransactionService:
             
             # Sort options
             sort_direction = -1 if sort_order == "desc" else 1
+            sort_keys = [(sort_by, sort_direction)]
+            if sort_by != "createdAt":
+                sort_keys.append(("createdAt", sort_direction))
             
-            cursor = self.collection.find(query).sort(sort_by, sort_direction).skip(skip).limit(limit)
+            cursor = self.collection.find(query).sort(sort_keys).skip(skip).limit(limit)
             
             transactions = []
             async for doc in cursor:
@@ -108,7 +111,7 @@ class TransactionService:
         try:
             cursor = self.collection.find(
                 {"userId": ObjectId(user_id)}
-            ).sort("date", -1).limit(limit)
+            ).sort([("date", -1), ("createdAt", -1)]).limit(limit)
             
             transactions = []
             async for doc in cursor:
@@ -439,7 +442,7 @@ class TransactionService:
             if category:
                 query["category"] = category
             
-            cursor = self.collection.find(query).sort("date", -1).limit(limit)
+            cursor = self.collection.find(query).sort([("date", -1), ("createdAt", -1)]).limit(limit)
             
             transactions = []
             async for doc in cursor:
@@ -493,7 +496,7 @@ class TransactionService:
             cursor = self.collection.find({
                 "userId": ObjectId(user_id),
                 "goalId": ObjectId(goal_id)
-            }).sort("date", -1)
+            }).sort([("date", -1), ("createdAt", -1)])
             
             transactions = []
             async for doc in cursor:
@@ -524,7 +527,7 @@ class TransactionService:
                     "$gte": start_date,
                     "$lte": end_date
                 }
-            }).sort("date", -1)
+            }).sort([("date", -1), ("createdAt", -1)])
             
             transactions = []
             async for doc in cursor:

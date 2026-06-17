@@ -7,6 +7,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import * as XLSX from 'xlsx';
 import apiClient from '../utils/axiosConfigs';
 import PdfPasswordInput from './PdfPasswordInput';
+import chatService from '../services/chatService';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -246,7 +247,7 @@ export default function VaultViewer({ document, isLoading, onBack }) {
     setShowPwModal(false);
     setPwError('');
     setActivePassword(document?.pdfPassword || '');
-  }, [documentId]);
+  }, [documentId, document?.pdfPassword]);
 
   const pdfSrc = useMemo(() => {
     if (!document?.data || isSpreadsheet) return null;
@@ -307,6 +308,7 @@ export default function VaultViewer({ document, isLoading, onBack }) {
     setPwSaving(true);
     try {
       await apiClient.put(`/vault/${documentId}/unlock`, { password: pwd });
+      chatService.triggerEmbedding();
     } catch (e) {
       console.warn('Failed to save PDF password to server:', e.message);
     } finally {

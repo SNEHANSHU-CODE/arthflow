@@ -1,7 +1,8 @@
 // middleware/analytics.js
 const { body, query, param, validationResult } = require('express-validator');
 const { AppError } = require('../utils/errorHandler');
-const { rateLimiter } = require('./rateLimiter');
+const { checkRateLimit } = require('./rateLimiter');
+const { cacheResult, getCachedResult } = require('../utils/cacheUtils');
 
 // Validation middleware
 const validateAnalyticsQuery = [
@@ -176,8 +177,7 @@ const logAnalyticsActivity = (activityType) => {
     try {
       // Log the analytics request for audit purposes
       const logData = {
-        userId: req.user.id,
-        profileId: req.user.profileId,
+        userId: req.user ? req.user.id : (req.userId || 'anonymous'),
         activityType,
         endpoint: req.originalUrl,
         method: req.method,
@@ -206,13 +206,13 @@ const logAnalyticsActivity = (activityType) => {
 // Rate limiting for analytics endpoints
 const checkAnalyticsLimits = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user ? req.user.id : (req.userId || 'anonymous');
     const key = `analytics_limit_${userId}`;
     
     // Check rate limit (e.g., 100 requests per hour)
-    const isAllowed = await rateLimiter.checkLimit(key, 100, 3600);
+    const limitResult = checkRateLimit(key, { windowMs: 3600 * 1000, max: 100 });
     
-    if (!isAllowed) {
+    if (!limitResult.allowed) {
       return next(new AppError('Analytics rate limit exceeded. Please try again later.', 429));
     }
 
@@ -308,7 +308,8 @@ const cacheAnalyticsResponse = (cacheTTL = 300) => {
       return next();
     }
 
-    const cacheKey = `analytics_${req.user.profileId}_${req.originalUrl}_${JSON.stringify(req.query)}`;
+    const userId = req.user ? (req.user.id || req.user._id) : (req.userId || 'anonymous');
+    const cacheKey = `analytics_${userId}_${req.originalUrl}_${JSON.stringify(req.query)}`;
     
     try {
       // Try to get cached result

@@ -59,9 +59,9 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Finance Tracker - Personal Money Manager',
-        short_name: 'FinTracker',
-        description: 'Track expenses, manage budget, and monitor financial health',
+        name: 'Arthflow - Personal Money Manager',
+        short_name: 'Arthflow',
+        description: 'Empower your financial life with smart tracking and goal setting',
         theme_color: '#1976d2',
         background_color: '#ffffff',
         display: 'standalone',
@@ -111,7 +111,7 @@ export default defineConfig({
         ],
         protocol_handlers: [
           {
-            protocol: 'web+fintrack',
+            protocol: 'web+arthflow',
             url: '/import?data=%s'
           }
         ]

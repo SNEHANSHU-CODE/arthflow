@@ -13,4 +13,4 @@ Disallow: /oauth/
 Disallow: /api/
 Disallow: /assets/
 
-Sitemap: https://financetracker.space/sitemap.xml
+Sitemap: https://arthflow.vercel.app/sitemap.xml

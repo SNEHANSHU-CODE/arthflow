@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { FiUploadCloud, FiTrash2, FiFileText, FiDownload, FiMoreVertical } from 'react-icons/fi';
 import { uploadDocument, deleteDocument, fetchDocumentById } from '../app/vaultSlice';
 import vaultService from '../services/vaultService';
+import chatService from '../services/chatService';
 
 const MAX_SIZE = 16 * 1024 * 1024;
 
@@ -148,6 +149,7 @@ export default function VaultItems({ onSelect }) {
         size: file.size,
         data,
       })).unwrap();
+      chatService.triggerEmbedding();
     } catch (err) {
       setUploadError(err || 'Upload failed');
     }

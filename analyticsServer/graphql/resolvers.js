@@ -1,13 +1,15 @@
 const AnalyticsService = require('../services/analyticsService');
 const PdfReportService = require('../services/pdfReportService');
 const { GraphQLError } = require('graphql');
+const fs = require('fs');
+const User = require('../models/User');
 
 /**
  * Error Handler for GraphQL Resolvers
  * Wraps errors in structured GraphQL errors and logs internally
  */
 const handleResolverError = (error, context = {}) => {
-  const errorCode = error.code || 'ANALYTICS_ERROR';
+  const errorCode = error.extensions?.code || error.code || 'ANALYTICS_ERROR';
   const errorMessage = error.message || 'An unexpected error occurred';
   
   console.error(`[${errorCode}] ${errorMessage}`, {
@@ -212,29 +214,31 @@ const resolvers = {
         };
 
         const dateRange = { startDate, endDate };
-        // FIX: was passing a plain string — pdfReportService expects { name, email }
-        const userInfo = { name: context.user.name || context.user.email, email: context.user.email };
+        // Fetch user from DB to get name (since JWT only has email/id)
+        const dbUser = await User.findById(context.user.id);
+        const userInfo = { name: dbUser?.name || dbUser?.email || context.user.email, email: context.user.email };
         const fileName = `Financial_Report_${context.user.id}_${Date.now()}.pdf`;
 
-        const result = await PdfReportService.generateFinancialReport(
-          analyticsData,
-          dateRange,
-          userInfo,
-          fileName
-        ).catch(error => {
+        try {
+          const result = await PdfReportService.generateFinancialReport(
+            analyticsData,
+            dateRange,
+            userInfo,
+            fileName
+          );
+          console.log(`✅ Report generated: ${result.fileName}`);
+
+          return {
+            success: result.success,
+            message: result.message,
+            fileName: result.fileName,
+            filePath: result.filePath
+          };
+        } catch (error) {
           throw new GraphQLError('PDF generation failed', {
             extensions: { code: 'PDF_GENERATION_ERROR', originalError: error.message }
           });
-        });
-
-        console.log(`✅ Report generated: ${result.fileName}`);
-
-        return {
-          success: result.success,
-          message: result.message,
-          fileName: result.fileName,
-          filePath: result.filePath
-        };
+        }
       } catch (error) {
         handleResolverError(error, { userId: context.user?.id });
       }

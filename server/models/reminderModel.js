@@ -20,6 +20,20 @@ const reminderSchema = new mongoose.Schema({
   calendarEventId: {
     type: String,
     default: null // Will be used when syncing to Google Calendar
+  },
+  description: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  amount: {
+    type: Number,
+    default: null
+  },
+  isSent: {
+    type: Boolean,
+    default: false,
+    index: true
   }
 }, {
   timestamps: true

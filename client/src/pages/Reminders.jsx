@@ -16,8 +16,8 @@ export default function Reminders() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [reminderText, setReminderText] = useState('');
   const [time, setTime] = useState('');
-  const [ampm, setAmpm] = useState('AM');
   const [showModal, setShowModal] = useState(false);
+  const [timeError, setTimeError] = useState('');
   const [editingReminder, setEditingReminder] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -80,26 +80,13 @@ export default function Reminders() {
     const hours = eventDate.getHours();
     const minutes = eventDate.getMinutes();
     
-    // Convert to 12-hour format
-    let displayHour = hours;
-    let period = 'AM';
-    
-    if (hours === 0) {
-      displayHour = 12;
-    } else if (hours > 12) {
-      displayHour = hours - 12;
-      period = 'PM';
-    } else if (hours === 12) {
-      period = 'PM';
-    }
-
-    const timeString = `${displayHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    // Use 24-hour format for the time input
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
     setEditingReminder(selectedEvent);
     setSelectedDate(selectedEvent.dateStr.split('T')[0]);
     setReminderText(selectedEvent.title);
     setTime(timeString);
-    setAmpm(period);
     setShowEventModal(false);
     setShowModal(true);
   };
@@ -120,11 +107,16 @@ export default function Reminders() {
   const handleSave = () => {
     if (!reminderText.trim()) return;
 
-    let [hour, minute] = time.split(':').map(Number);
-    if (ampm === 'PM' && hour < 12) hour += 12;
-    if (ampm === 'AM' && hour === 12) hour = 0;
+    if (!time || !/^\d{1,2}:\d{2}$/.test(time)) {
+      setTimeError('Please enter a valid time');
+      return;
+    }
+    setTimeError('');
 
-    const dateTime = new Date(selectedDate);
+    let [hour, minute] = time.split(':').map(Number);
+
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const dateTime = new Date(year, month - 1, day);
     dateTime.setHours(hour);
     dateTime.setMinutes(minute || 0);
 
@@ -147,7 +139,7 @@ export default function Reminders() {
     // Reset
     setReminderText('');
     setTime('');
-    setAmpm('AM');
+    setTimeError('');
     setShowModal(false);
     setEditingReminder(null);
   };
@@ -172,6 +164,7 @@ export default function Reminders() {
     setConfirmDelete(null);
     setEditingReminder(null);
     setSelectedEvent(null);
+    setTimeError('');
   };
 
   return (
@@ -254,18 +247,10 @@ export default function Reminders() {
                       onChange={(e) => setTime(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <label className="form-label">AM/PM</label>
-                    <select
-                      className="form-select"
-                      value={ampm}
-                      onChange={(e) => setAmpm(e.target.value)}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
                 </div>
+                {timeError && (
+                  <p className="text-danger small mt-1">{timeError}</p>
+                )}
               </div>
               <div className="modal-footer border-0">
                 <button className="btn btn-secondary" onClick={closeAllModals}>

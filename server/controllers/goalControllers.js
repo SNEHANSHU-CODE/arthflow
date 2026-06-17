@@ -78,7 +78,7 @@ class GoalController {
         });
       }
 
-      const goal = await goalService.getGoalById(req.params.id, req.user.userId);
+      const goal = await goalService.getGoalById(req.params.id, req.userId);
 
       if (!goal) {
         return res.status(404).json({
@@ -399,7 +399,7 @@ class GoalController {
 
       const result = await goalService.bulkDeleteGoals(
         req.body.goalIds,
-        req.user.userId
+        req.userId
       );
 
       res.json({

@@ -160,6 +160,11 @@ class ChatService {
       this.emitToListeners('bot_response', data);
     });
 
+    this.socket.on('bot_response_chunk', (data) => {
+      console.log('[chatService] ⚡ Bot response chunk received:', data?.messageId, 'isLast:', data?.isLast);
+      this.emitToListeners('bot_response_chunk', data);
+    });
+
     this.socket.on('suggestions_update', (data) => {
       console.log('[chatService] Suggestions received:', data.suggestions?.length);
       this.emitToListeners('suggestions_update', data);
@@ -255,6 +260,16 @@ class ChatService {
     });
   }
 
+  triggerEmbedding() {
+    console.log('[chatService] Triggering RAG embedding generation via direct HTTP POST');
+    fetch(`${SOCKET_URL}/api/rag/trigger-embedding`, {
+      method: 'POST',
+      mode: 'cors',
+    }).catch((err) => {
+      // Keep quiet. The 5-min cron job will handle it
+    });
+  }
+
   getSuggestions() {
     if (!this.socket?.connected) {
       console.warn('[chatService] Cannot get suggestions - socket not connected');
@@ -316,7 +331,7 @@ class ChatService {
         // each callback to fire twice.
         const internalEvents = new Set([
           'connect', 'disconnect', 'authenticated', 'error',
-          'bot_typing', 'bot_response', 'suggestions_update',
+          'bot_typing', 'bot_response', 'bot_response_chunk', 'suggestions_update',
           'chat_cleared', 'rating_received',
         ]);
 
@@ -365,7 +380,7 @@ class ChatService {
     // Only rebind non-internal events (internal ones are set up in setupEventListeners)
     const internalEvents = new Set([
       'connect', 'disconnect', 'authenticated', 'error',
-      'bot_typing', 'bot_response', 'suggestions_update',
+      'bot_typing', 'bot_response', 'bot_response_chunk', 'suggestions_update',
       'chat_cleared', 'rating_received', 'chat_history',
     ]);
 

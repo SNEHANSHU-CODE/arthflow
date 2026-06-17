@@ -7,8 +7,8 @@
  * Required env vars (analytics server .env):
  *   MONGO_URI        — shared MongoDB (same as main server)
  *   RESEND_API_KEY   — copy from main server .env
- *   EMAIL_DOMAIN     — e.g. financetracker.space
- *   APP_URL          — e.g. https://financetracker.space
+ *   EMAIL_DOMAIN     — e.g. arthflow.vercel.app
+ *   APP_URL          — e.g. https://arthflow.vercel.app
  *
  * Usage (analytics server entry point):
  *   const cron = require('./monthlyReportCron');
@@ -19,49 +19,27 @@
  *   cron.triggerNow({ year: 2026, month: 2 }); // specific month
  */
 
+const cron = require('node-cron');
 const monthlyReportService = require('./monthlyReportService');
 
 class MonthlyReportCron {
   constructor() {
-    this.timer        = null;
-    this.isRunning    = false;
-    this.checkInterval = 60 * 1000; // check every minute
+    this.task = null;
+    this.isRunning = false;
   }
 
   /**
-   * Returns true if right now is the 1st of the month within the trigger window.
-   * We use a 1-minute window so a missed tick isn't a problem.
-   */
-  _shouldTrigger(now) {
-    return (
-      now.getDate()    === 1  &&
-      now.getHours()   === 0  &&
-      now.getMinutes() === 0
-    );
-  }
-
-  /** How many ms until the next 00:00 on the 1st */
-  _msUntilNextRun() {
-    const now  = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
-    return next.getTime() - now.getTime();
-  }
-
-  /**
-   * Core tick — called every minute.
+   * Core execution task.
    * Prevents overlapping runs with isRunning guard.
    */
-  async _tick() {
-    const now = new Date();
-
-    if (!this._shouldTrigger(now)) return;
+  async _executeJob() {
     if (this.isRunning) {
       console.warn('⚠️  Monthly report job already running — skipping duplicate trigger');
       return;
     }
 
     this.isRunning = true;
-    console.log(`🚀 Monthly report job started at ${now.toISOString()}`);
+    console.log(`🚀 Monthly report job started at ${new Date().toISOString()}`);
 
     try {
       await monthlyReportService.sendReportsToAllUsers();
@@ -73,27 +51,22 @@ class MonthlyReportCron {
     }
   }
 
-  /** Start the cron — logs next scheduled run */
+  /** Start the cron task */
   start() {
-    if (this.timer) {
+    if (this.task) {
       console.warn('⚠️  Monthly report cron already started');
       return;
     }
 
-    const msToNext = this._msUntilNextRun();
-    const nextRun  = new Date(Date.now() + msToNext);
-    console.log(`📅 Monthly report cron started. Next run: ${nextRun.toLocaleString('en-IN')}`);
-
-    this.timer = setInterval(() => this._tick(), this.checkInterval);
-
-    // Keep the interval from blocking process exit
-    if (this.timer.unref) this.timer.unref();
+    console.log('📅 Monthly report cron initialized. Scheduled for 00:00 on the 1st of every month.');
+    // Cron syntax: minute hour day-of-month month day-of-week
+    this.task = cron.schedule('0 0 1 * *', () => this._executeJob());
   }
 
   stop() {
-    if (!this.timer) return;
-    clearInterval(this.timer);
-    this.timer = null;
+    if (!this.task) return;
+    this.task.stop();
+    this.task = null;
     console.log('🛑 Monthly report cron stopped');
   }
 

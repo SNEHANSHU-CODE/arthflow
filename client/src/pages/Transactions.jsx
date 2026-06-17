@@ -80,7 +80,7 @@ export default function Transactions() {
       };
       dispatch(fetchTransactions(params));
     }
-  }, [dispatch, userId, filters, pagination.currentPage]);
+  }, [dispatch, userId, filters, pagination.currentPage, pagination.itemsPerPage]);
 
   // Clear error when component unmounts
   useEffect(() => {

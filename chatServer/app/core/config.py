@@ -19,12 +19,12 @@ class Settings(BaseSettings):
 
     # Database
     MONGO_URI: str
-    MONGO_DB_NAME: str = "finace-tracker"
+    MONGO_DB_NAME: str = "arthflow"
 
     # AI/LLM Configuration
-    GROK_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
-    DEFAULT_LLM: str = "grok"
+    DEFAULT_LLM: str = "groq"
     LLM_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 1024
 
