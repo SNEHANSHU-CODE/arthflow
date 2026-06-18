@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema({
     createdAt: {
       type: Date,
       default: Date.now
+    },
+    expiresAt: {
+      type: Date,
+      default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     }
   }],
   lastLoginAt: {
@@ -101,6 +105,15 @@ const userSchema = new mongoose.Schema({
       default: false
     }
   }
+});
+
+// Clean up expired refresh tokens before saving
+userSchema.pre('save', function (next) {
+  if (this.refreshTokens && this.refreshTokens.length > 0) {
+    const now = new Date();
+    this.refreshTokens = this.refreshTokens.filter(token => !token.expiresAt || token.expiresAt > now);
+  }
+  next();
 });
 
 // Hash password before saving (only if password is set)

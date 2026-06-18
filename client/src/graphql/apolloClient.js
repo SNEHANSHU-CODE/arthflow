@@ -10,6 +10,7 @@ import { setCredentials, clearCredentials } from '../app/authSlice';
 // OWN refresh logic in parallel — two simultaneous refreshes = race condition
 // and the second one always fails (refresh token already rotated).
 import axios from 'axios';
+import sessionManager from '../utils/sessionManager';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -39,53 +40,10 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
-let isRefreshing = false;
-let pendingRequests = [];
+import { refreshTokenShared } from '../utils/axiosConfigs';
 
-const resolvePendingRequests = () => {
-  pendingRequests.forEach(resolve => resolve());
-  pendingRequests = [];
-};
-
-// BUG 3 FIX: Shared refresh function used by both the queue path and main path
-// so token is fetched once and reused — no duplicate refresh calls.
 const getNewToken = () => {
-  // Only start one refresh at a time — return existing promise if in progress
-  if (!isRefreshing) {
-    isRefreshing = true;
-
-    return axios
-      .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
-      .then(response => {
-        const newToken =
-          response.data?.data?.accessToken ||
-          response.data?.accessToken;
-
-        if (!newToken) throw new Error('No token in refresh response');
-
-        // BUG 3 FIX: Also fetch user from refresh response so setCredentials
-        // doesn't receive { accessToken, user: undefined } — authSlice needs
-        // user._id to set userId correctly.
-        const newUser =
-          response.data?.data?.user ||
-          response.data?.user;
-
-        store.dispatch(setCredentials({ accessToken: newToken, user: newUser }));
-        resolvePendingRequests();
-        return newToken;
-      })
-      .catch(err => {
-        pendingRequests = [];
-        store.dispatch(clearCredentials());
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-        throw err;
-      })
-      .finally(() => {
-        isRefreshing = false;
-      });
-  }
+  return refreshTokenShared();
 };
 
 const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
@@ -94,23 +52,6 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) 
     graphQLErrors?.some(e => e.extensions?.code === 'UNAUTHENTICATED');
 
   if (is401) {
-    // If refresh already running, queue this operation
-    if (isRefreshing) {
-      return fromPromise(
-        new Promise(resolve => {
-          pendingRequests.push(resolve);
-        })
-      ).flatMap(() => {
-        // Re-read the now-updated token from store for the retry
-        const token = store.getState().auth?.accessToken;
-        operation.setContext(({ headers = {} }) => ({
-          headers: { ...headers, authorization: `Bearer ${token}` },
-        }));
-        return forward(operation);
-      });
-    }
-
-    // BUG 1 FIX: Wrap async refresh in fromPromise to return an Observable
     return fromPromise(getNewToken())
       .flatMap(newToken => {
         operation.setContext(({ headers = {} }) => ({

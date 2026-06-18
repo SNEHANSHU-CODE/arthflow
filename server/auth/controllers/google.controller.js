@@ -68,7 +68,7 @@ class GoogleOAuthController {
       }
 
       // Generate JWT tokens
-      const { accessToken, refreshToken } =
+      const { accessToken, refreshToken, sessionId } =
         JWTUtils.generateTokenPair(user.id);
 
       // Persist refresh token
@@ -79,6 +79,7 @@ class GoogleOAuthController {
         await User.findByIdAndUpdate(user.id, {
           $push: {
             refreshTokens: {
+              _id: sessionId,
               token: refreshToken,
               device: req.get('user-agent'),
               ip: getClientIp(req),

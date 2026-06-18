@@ -103,7 +103,7 @@ export default function Transactions() {
     if (transformedFilters.type && transformedFilters.type !== 'all') {
       transformedFilters.type = transformedFilters.type === 'income' ? 'Income' : 'Expense';
     } else if (transformedFilters.type === 'all') {
-      delete transformedFilters.type;
+      transformedFilters.type = 'all';
     }
 
     dispatch(setFilters(transformedFilters));
@@ -691,6 +691,7 @@ export default function Transactions() {
                         type="date"
                         className="form-control"
                         value={formData.date}
+                        max={new Date().toISOString().split('T')[0]}
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         required
                         disabled={loading}

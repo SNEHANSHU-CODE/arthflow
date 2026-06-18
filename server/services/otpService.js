@@ -214,11 +214,11 @@ class OtpService {
       }
 
       const email = decoded.email.toLowerCase().trim();
-      console.log('Decoded email from token:', email);
+      console.log('Decoded email from token successfully');
 
       // Check if token exists in Redis
       const storedToken = await redisService.get(this.getResetTokenKey(email));
-      console.log('Redis key:', this.getResetTokenKey(email));
+      console.log('Redis key verified');
       console.log(storedToken , token);
       if (!storedToken || storedToken !== token) {
         throw new Error('Invalid or expired reset token');
@@ -251,7 +251,7 @@ class OtpService {
       await redisService.del(this.getResetTokenKey(email));
 
       // Log password reset for security
-      console.log(`Password reset for user: ${email} at ${new Date()} - Logged out from all devices`);
+      console.log(`Password reset for userId: ${user._id} at ${new Date().toISOString()} - Logged out from all devices`);
 
       return {
         success: true,

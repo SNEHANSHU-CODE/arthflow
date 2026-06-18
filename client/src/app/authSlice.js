@@ -39,7 +39,9 @@ export const refreshToken = createAsyncThunk(
   'auth/refresh',
   async (_, { rejectWithValue }) => {
     try {
-      return await authService.refreshToken();
+      const response = await authService.refreshToken();
+      sessionManager.createSession(response.user, response.accessToken);
+      return response;
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -108,7 +110,9 @@ export const verifyAuthToken = createAsyncThunk(
   'auth/verify',
   async (_, { rejectWithValue }) => {
     try {
-      return await authService.verifyToken();
+      const response = await authService.verifyToken();
+      sessionManager.createSession(response.user, response.accessToken);
+      return response;
     } catch (error) {
       return rejectWithValue(error.message);
     }

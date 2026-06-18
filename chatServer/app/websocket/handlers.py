@@ -181,6 +181,7 @@ class SocketEventHandlers:
             conversation_history = data.get("conversationHistory", [])
             request_id = data.get("requestId")
             vault_id = data.get("vault_id") or None  # RAG mode if set
+            currency_symbol = data.get("currencySymbol", "₹")
             
             # Validate message
             if not message:
@@ -261,11 +262,18 @@ class SocketEventHandlers:
                         "vault_id": vault_id,
                         **rag_metadata
                     }
+                    if rag_metadata.get("no_match"):
+                        is_static_guest_response = True
+                        static_guest_text = "I don't see any record of that in the provided document."
+                        provider = "informational"
+                    elif not rag_metadata.get("is_rag", True):
+                        metadata["response_type"] = "authenticated"
                 elif is_authenticated:
                     # Standard Authenticated Mode
                     messages, llm, provider, memory = await orchestrator.prepare_authenticated_query(
                         user_id=user_id,
                         query=masked_msg,
+                        currency_symbol=currency_symbol,
                     )
                     metadata = {"response_type": "authenticated"}
                 else:
@@ -365,8 +373,8 @@ class SocketEventHandlers:
 
                 # Save complete messages to MongoDB
                 if is_authenticated and memory:
-                    await memory.add_message(message, message_type="human")
-                    await memory.add_message(accumulated_text, message_type="ai", metadata={"provider": provider, **metadata})
+                    await memory.add_message(masked_msg, message_type="human")
+                    await memory.add_message(accumulated_text, message_type="ai", metadata={"provider": provider, "messageId": message_id, **metadata})
 
                 # Emit final chunk (isLast=True)
                 await self.sio.emit('bot_response_chunk', {
@@ -482,14 +490,27 @@ class SocketEventHandlers:
             data = data or {}
             message_id = data.get("messageId")
             rating = data.get("rating")
+            feedback = data.get("feedback")
             
             session = self.get_session(sid)
             user_id = session.get("user_id")
             
-            logger.info(f"⭐ Rating from {user_id}: {message_id} → {rating}")
+            logger.info(f"👍 Rating from {user_id}: {message_id} → {rating}")
             
-            # TODO: Store rating in database
-            
+            # Store rating in database
+            if user_id and message_id and rating in ["up", "down"]:
+                from app.core.database import Database
+                training_logs = Database.training_logs_collection()
+                await training_logs.update_one(
+                    {"messageId": message_id, "userId": str(user_id)},
+                    {"$set": {
+                        "rating": rating,
+                        "feedback": feedback,
+                        "ratedAt": datetime.utcnow().isoformat()
+                    }},
+                    upsert=True
+                )
+                
             await self.sio.emit('rating_received', {
                 "messageId": message_id,
                 "rating": rating,

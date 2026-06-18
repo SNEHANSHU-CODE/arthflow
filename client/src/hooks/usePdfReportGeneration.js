@@ -7,8 +7,8 @@ import { gql } from '@apollo/client';
  * GraphQL Mutation for PDF Report Generation
  */
 const GENERATE_FINANCIAL_REPORT = gql`
-  mutation GenerateFinancialReport($startDate: String!, $endDate: String!) {
-    generateFinancialReport(startDate: $startDate, endDate: $endDate) {
+  mutation GenerateFinancialReport($startDate: String!, $endDate: String!, $currencySymbol: String) {
+    generateFinancialReport(startDate: $startDate, endDate: $endDate, currencySymbol: $currencySymbol) {
       success
       message
       fileName
@@ -41,11 +41,11 @@ export const usePdfReportGeneration = () => {
    * Returns: { success, message, fileName, filePath }
    */
   const generateReportViaGraphQL = useCallback(
-    async (startDate, endDate) => {
+    async (startDate, endDate, currencySymbol = '₹') => {
       try {
         console.log('📊 Generating PDF report via GraphQL...');
         const { data } = await generateReportGraphQL({
-          variables: { startDate, endDate }
+          variables: { startDate, endDate, currencySymbol }
         });
 
         if (data?.generateFinancialReport?.success) {

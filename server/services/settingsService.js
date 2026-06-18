@@ -154,6 +154,19 @@ const settingsService = {
 
       await user.save();
 
+      // Notify the specific session via websockets
+      const Notification = require('../models/notificationModel');
+      await Notification.create({
+        userId,
+        type: 'session_terminated',
+        title: 'Session Terminated',
+        message: 'Your session has been terminated from another device.',
+        priority: 'High',
+        data: { sessionId },
+        isRead: true, // Don't show in the notification list
+        isEmailSent: true // Do not send email
+      });
+
       return { message: 'Session terminated successfully', wasCurrent };
     } catch (error) {
       throw new Error(`Failed to terminate session: ${error.message}`);
@@ -168,17 +181,39 @@ const settingsService = {
         throw new Error('User not found');
       }
 
+      const Notification = require('../models/notificationModel');
+      const removedSessions = [];
+
       // Keep only the current refresh token
       if (currentToken) {
-        user.refreshTokens = user.refreshTokens.filter(
-          tokenObj => tokenObj.token === currentToken
-        );
+        user.refreshTokens = user.refreshTokens.filter(tokenObj => {
+          if (tokenObj.token === currentToken) {
+            return true;
+          }
+          removedSessions.push(tokenObj._id.toString());
+          return false;
+        });
       } else {
         // If no current token provided, clear all sessions
+        user.refreshTokens.forEach(t => removedSessions.push(t._id.toString()));
         user.refreshTokens = [];
       }
 
       await user.save();
+      
+      // Notify all removed sessions
+      for (const sessionId of removedSessions) {
+        await Notification.create({
+          userId,
+          type: 'session_terminated',
+          title: 'Session Terminated',
+          message: 'Your session has been terminated from another device.',
+          priority: 'High',
+          data: { sessionId },
+          isRead: true,
+          isEmailSent: true
+        });
+      }
       
       return {
         message: 'All other sessions terminated successfully',

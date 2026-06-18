@@ -200,7 +200,7 @@ class RegistrationOtpService {
       await redisService.del(this.getRegistrationTokenKey(email));
 
       // Log successful registration
-      console.log(`New user registered: ${email} at ${new Date()}`);
+      console.log(`New user registered: ${user._id} at ${new Date().toISOString()}`);
 
       return {
         success: true,

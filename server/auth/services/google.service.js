@@ -133,7 +133,7 @@ class GoogleOAuthService {
       const oauth2 = google.oauth2({ version: 'v2', auth: this.oauth2Client });
       const { data } = await oauth2.userinfo.get();
       googleUser = data;
-      console.log('[OAuth] User info received:', { id: googleUser?.id, email: googleUser?.email });
+      console.log('[OAuth] User info received:', { id: googleUser?.id });
 
       // Validate required user info
       if (!googleUser || !googleUser.id) {
@@ -162,7 +162,7 @@ class GoogleOAuthService {
     try {
       console.log('[OAuth] Creating/updating user in database...');
       user = await User.upsertGoogleUser(googleUser, tokens);
-      console.log('[OAuth] User upserted successfully:', { userId: user?._id, email: user?.email });
+      console.log('[OAuth] User upserted successfully:', { userId: user?._id });
       if (!user || !user._id) {
         throw new Error('User object invalid after upsert');
       }

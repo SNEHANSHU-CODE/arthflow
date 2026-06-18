@@ -7,7 +7,8 @@ const reminderService = {
   },
   
   async createReminder(data) {
-    const response = await apiClient.post('/reminders', data);
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const response = await apiClient.post('/reminders', { ...data, timeZone });
     return response.data;
   },
   
@@ -17,12 +18,14 @@ const reminderService = {
   },
   
   async updateReminder(id, data) {
-    const response = await apiClient.put(`/reminders/${id}`, data);
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const response = await apiClient.put(`/reminders/${id}`, { ...data, timeZone });
     return response.data;
   },
   
   async googleConnect() {
-    const response = await apiClient.post('/google');
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const response = await apiClient.post('/google', { timeZone });
     return response.data;
   }
 };

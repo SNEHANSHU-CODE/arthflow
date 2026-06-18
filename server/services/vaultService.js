@@ -1,4 +1,5 @@
 const Vault = require('../models/vaultModel');
+const { encryptPassword } = require('../utils/cryptoUtils');
 
 class VaultService {
   async uploadDocument(userId, { name, originalName, mimeType, size, data, tags, description }) {
@@ -35,7 +36,7 @@ class VaultService {
     const doc = await Vault.findOne({ _id: documentId, userId });
     if (!doc) throw new Error('Document not found');
 
-    doc.pdfPassword = password;
+    doc.pdfPassword = encryptPassword(password);
     doc.passwordProtected = true;
     // Reset so cron picks it up again now that we have the password
     doc.isProcessedForRAG = false;

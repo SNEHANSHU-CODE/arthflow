@@ -68,6 +68,7 @@ class ChatMemory:
         """
         metadata = metadata or {}
         msg_doc = {
+            "id": metadata.get("messageId"),
             "role": message_type,          # "human" or "ai"
             "content": content,
             "provider": metadata.get("provider"),

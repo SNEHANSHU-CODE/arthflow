@@ -123,3 +123,19 @@ export const formatTime = (date) => {
     return d.toLocaleTimeString();
   }
 };
+
+/**
+ * Format a number as a percentage
+ * @param {number} value - The decimal or whole number to format
+ * @param {number} decimals - Number of decimal places
+ * @returns {string} Formatted percentage string
+ */
+export const formatPercent = (value, decimals = 1) => {
+  if (value === null || value === undefined) return '0%';
+  
+  try {
+    return Number(value).toFixed(decimals) + '%';
+  } catch (error) {
+    return value + '%';
+  }
+};

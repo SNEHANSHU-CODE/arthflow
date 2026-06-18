@@ -4,7 +4,7 @@
  */
 
 const SESSION_KEY = 'arthflow_session';
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const sessionManager = {
   /**
@@ -35,7 +35,26 @@ export const sessionManager = {
    * Get current session
    */
   getSession: () => {
-    const sessionStr = sessionStorage.getItem(SESSION_KEY);
+    let sessionStr = sessionStorage.getItem(SESSION_KEY);
+    
+    // Recovery for new tabs where sessionStorage is empty but localStorage token exists
+    if (!sessionStr) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const session = {
+            createdAt: new Date((payload.iat || Date.now() / 1000) * 1000).toISOString(),
+            expiresAt: new Date((payload.exp || (Date.now() / 1000 + 1800)) * 1000).toISOString(),
+          };
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+          sessionStr = JSON.stringify(session);
+        } catch (error) {
+          // Ignore token parsing errors
+        }
+      }
+    }
+
     if (!sessionStr) return null;
     
     try {
@@ -201,6 +220,7 @@ export const sessionManager = {
 
   /**
    * Track inactivity
+   * @deprecated Not called anywhere. Session timeout is handled by JWT refresh cycle in axiosConfigs.js. Do NOT activate without coordinating with JWT TTLs.
    */
   setupInactivityTracker: (timeout = SESSION_TIMEOUT, onExpire = null) => {
     let inactivityTimer;

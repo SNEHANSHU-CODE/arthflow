@@ -3,14 +3,10 @@ import {
     FaFilter,
     //getTrendIcon
 } from "react-icons/fa";
+import { usePreferences } from '../hooks/usePreferences';
 
 export default function Catagory({ catagoryData }) {
-    const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+    const { formatCurrency } = usePreferences();
     return (
         <div className="card border-0 shadow-sm">
             <div className="card-header bg-transparent border-0 pt-3">

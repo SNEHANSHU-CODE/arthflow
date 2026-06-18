@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../app/authSlice';
 import { authService } from '../services/authService';
+import sessionManager from '../utils/sessionManager';
 
 /**
  * OAuth Callback Handler
@@ -51,6 +52,7 @@ export default function OAuthCallback() {
                     user: profileData.user,
                     accessToken,
                 }));
+                sessionManager.createSession(profileData.user, accessToken);
 
                 setStatus('success');
 

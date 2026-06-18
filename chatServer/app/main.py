@@ -30,6 +30,13 @@ if settings.SECRET_KEY == "your-secret-key-change-in-production":
     logger.warning("⚠️  WARNING: Using default SECRET_KEY! Change this in production by setting SECRET_KEY in .env file")
 
 
+# Parse CORS origins
+cors_origins_list = ["*"] if settings.CORS_ORIGINS == "*" else settings.CORS_ORIGINS.split(",")
+
+# Initialize Socket.IO server BEFORE creating FastAPI app
+socket_server = init_socket_server(cors_origins=cors_origins_list)
+logger.info("✅ Socket.IO server initialized")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -144,13 +151,6 @@ async def lifespan(app: FastAPI):
     await Database.close_db()
     logger.info("Shutdown complete")
 
-
-# Parse CORS origins
-cors_origins_list = ["*"] if settings.CORS_ORIGINS == "*" else settings.CORS_ORIGINS.split(",")
-
-# Initialize Socket.IO server BEFORE creating FastAPI app
-socket_server = init_socket_server(cors_origins=cors_origins_list)
-logger.info("✅ Socket.IO server initialized")
 
 # Create FastAPI application
 app = FastAPI(

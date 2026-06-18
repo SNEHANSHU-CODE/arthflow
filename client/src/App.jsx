@@ -17,27 +17,13 @@ function App() {
   const isAuthenticated = useSelector((state) => state.auth?.isAuthenticated);
   const accessToken = useSelector((state) => state.auth?.accessToken);
 
-  // Initialize preferences and session on mount
+  // Initialize preferences on mount
   useEffect(() => {
     if (isAuthenticated) {
       // Fetch preferences from server
       dispatch(fetchUserPreferences());
-      
-      // Setup session tracking
-      if (accessToken) {
-        const cleanup = sessionManager.setupInactivityTracker(
-          30 * 60 * 1000, // 30 minutes
-          () => {
-            // Session expired callback
-            console.log('Session expired due to inactivity');
-            dispatch(logoutUser());
-          }
-        );
-        
-        return cleanup;
-      }
     }
-  }, [isAuthenticated, accessToken, dispatch]);
+  }, [isAuthenticated, dispatch]);
 
   return (
     <SettingsProvider>

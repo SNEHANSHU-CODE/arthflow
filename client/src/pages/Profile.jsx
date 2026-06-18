@@ -192,7 +192,7 @@ const ProfilePage = () => {
   const validateDeleteConfirm = () => {
     const newErrors = {};
     
-    if (!deleteConfirm.password.trim()) {
+    if (user?.lastLoginProvider !== 'google' && !deleteConfirm.password.trim()) {
       newErrors.password = 'Password is required to confirm deletion';
     }
     
@@ -335,7 +335,8 @@ const ProfilePage = () => {
             </div>
 
             {/* Change Password Section */}
-            <div className="card border-0 shadow-sm mt-4">
+            {user?.lastLoginProvider !== 'google' && (
+              <div className="card border-0 shadow-sm mt-4">
               <div className="card-header bg-transparent border-0 pt-3">
                 <h5 className="mb-0 d-flex align-items-center gap-2 text-primary">
                   <FaKey size={16} />
@@ -466,8 +467,9 @@ const ProfilePage = () => {
                 </form>
               </div>
             </div>
+            )}
 
-            {/* Danger Section- Delete Account */}
+            {/* Account Management Section */}
             <div className="card border-0 shadow-sm mt-4">
               <div className="card-header bg-transparent border-0 pt-3">
                 <h5 className="mb-0 d-flex align-items-center gap-2 text-danger">
@@ -518,6 +520,7 @@ const ProfilePage = () => {
                 )}
 
                 <form>
+                  {user?.lastLoginProvider !== 'google' && (
                   <div className="mb-3">
                     <label htmlFor="deletePassword" className="form-label">
                       Enter password to confirm
@@ -537,6 +540,7 @@ const ProfilePage = () => {
                       </div>
                     )}
                   </div>
+                  )}
                   
                   <div className="mb-3">
                     <label htmlFor="confirmDeletion" className="form-label">

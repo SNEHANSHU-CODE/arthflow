@@ -113,10 +113,11 @@ class AuthController {
       const user = result.user;
 
       // Generate token pair
-      const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
+      const { accessToken, refreshToken, sessionId } = JWTUtils.generateTokenPair(user._id);
 
       // Save refresh token to user with device info
       user.refreshTokens.push({
+        _id: sessionId,
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
@@ -209,11 +210,15 @@ class AuthController {
       }
 
       // Generate token pair
-      const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
+      const { accessToken, refreshToken, sessionId } = JWTUtils.generateTokenPair(user._id);
 
       // Implement token rotation: keep only last 5 tokens to prevent unbounded growth
-      const recentTokens = user.refreshTokens.slice(-4);
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      const recentTokens = user.refreshTokens
+        .filter(t => Date.now() - new Date(t.createdAt).getTime() < SEVEN_DAYS)
+        .slice(-4);
       recentTokens.push({
+        _id: sessionId,
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
@@ -286,6 +291,16 @@ class AuthController {
       if (!tokenExists) {
         return ResponseUtils.unauthorized(res, 'Invalid refresh token');
       }
+
+      // Clean up expired tokens
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      const recentTokens = user.refreshTokens
+        .filter(t => Date.now() - new Date(t.createdAt).getTime() < SEVEN_DAYS)
+        .slice(-5); // Keep up to 5 tokens
+
+      await User.findByIdAndUpdate(user._id, {
+        $set: { refreshTokens: recentTokens }
+      });
 
       // Generate new access token
       const newAccessToken = JWTUtils.generateAccessToken(user._id);
@@ -512,7 +527,7 @@ class AuthController {
       });
 
       // Log password change for security (optional)
-      console.log(`Password updated for user: ${user.email} at ${new Date()} - Logged out from all devices`);
+      console.log(`Password updated for userId: ${user._id} at ${new Date().toISOString()} - Logged out from all devices`);
 
       return ResponseUtils.success(res, {
         message: 'Password updated successfully. You have been logged out from all devices for security.'
@@ -537,8 +552,15 @@ class AuthController {
       const { password, confirmDeletion } = req.body;
       const userId = req.user._id;
 
+      const user = await User.findById(userId).select('+password');
+      if (!user) {
+        return ResponseUtils.notFound(res, 'User not found');
+      }
+
+      const isGoogleUser = user.lastLoginProvider === 'google';
+
       // Validate required fields
-      if (!password) {
+      if (!isGoogleUser && !password) {
         return ResponseUtils.error(res, 'Password is required to delete profile', 400);
       }
 
@@ -546,21 +568,44 @@ class AuthController {
         return ResponseUtils.error(res, 'Please type "DELETE" to confirm profile deletion', 400);
       }
 
-      // Find the current user
-      const user = await User.findById(userId);
-      if (!user) {
-        return ResponseUtils.notFound(res, 'User not found');
-      }
-
       // Verify password
-      const isPasswordValid = await user.comparePassword(password);
-      if (!isPasswordValid) {
-        return ResponseUtils.unauthorized(res, 'Incorrect password');
+      if (!isGoogleUser) {
+        const isPasswordValid = await user.comparePassword(password);
+        if (!isPasswordValid) {
+          return ResponseUtils.unauthorized(res, 'Incorrect password');
+        }
       }
 
-      // Instead of hard deletion, you might want to soft delete (deactivate)
-      // For hard deletion, use the following:
-      await User.findByIdAndDelete(userId);
+      // Cascading delete
+      const Transaction = require('../models/transactionModel');
+      const Budget = require('../models/budgetModel');
+      const Goal = require('../models/goalModel');
+      const Reminder = require('../models/reminderModel');
+      const Vault = require('../models/vaultModel');
+      const Session = require('../models/sessionModel');
+      const Notification = require('../models/notificationModel');
+      const mongoose = require('mongoose');
+
+      await Promise.all([
+        Transaction.deleteMany({ userId: userId }),
+        Budget.deleteMany({ userId: userId }),
+        Goal.deleteMany({ userId: userId }),
+        Reminder.deleteMany({ userId: userId }),
+        Vault.deleteMany({ userId: userId }),
+        Session.deleteMany({ userId: userId }),
+        Notification.deleteMany({ userId: userId }),
+        mongoose.connection.db.collection('chat_history').deleteMany({ userId: userId.toString() }),
+        // Verify we're targeting the right DB before deleting embeddings
+        (async () => {
+          const dbName = mongoose.connection.db.databaseName;
+          if (!['arthflow', process.env.MONGO_DB_NAME].filter(Boolean).includes(dbName)) {
+            console.warn(`[deleteProfile] Unexpected DB name: ${dbName} — skipping embedding delete`);
+          } else {
+            return mongoose.connection.db.collection('embeddings').deleteMany({ userId: userId.toString() });
+          }
+        })(),
+        User.findByIdAndDelete(userId)
+      ]);
 
       // Clear refresh token cookie
       res.clearCookie('refreshToken', {
@@ -570,7 +615,7 @@ class AuthController {
       });
 
       // Log account deletion for audit purposes
-      console.log(`Account deleted for user: ${user.email} at ${new Date()}`);
+      console.log(`Account deleted for userId: ${userId} at ${new Date().toISOString()}`);
 
       return ResponseUtils.success(res, null, 'Profile deleted successfully');
 
@@ -598,9 +643,13 @@ class AuthController {
       await otpService.verifyMFAOtp(userId, otp);
 
       // OTP verified — issue tokens
-      const { accessToken, refreshToken } = JWTUtils.generateTokenPair(user._id);
-      const recentTokens = user.refreshTokens.slice(-4);
+      const { accessToken, refreshToken, sessionId } = JWTUtils.generateTokenPair(user._id);
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      const recentTokens = user.refreshTokens
+        .filter(t => Date.now() - new Date(t.createdAt).getTime() < SEVEN_DAYS)
+        .slice(-4);
       recentTokens.push({
+        _id: sessionId,
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),

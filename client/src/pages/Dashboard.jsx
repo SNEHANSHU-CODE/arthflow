@@ -392,8 +392,7 @@ You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} t
                     ) : (
                       <tr>
                         <td colSpan="5" className="text-center text-muted py-4">
-                          <FaExclamationTriangle className="me-2" />
-                          No recent transactions yet
+                          No recent transactions
                         </td>
                       </tr>
                     )}

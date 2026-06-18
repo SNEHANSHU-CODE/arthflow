@@ -97,7 +97,7 @@ export const authService = {
 
   deleteUserAccount: async (accountData) => {
     try {
-      const response = await apiClient.put('/auth/deleteaccount', accountData);
+      const response = await apiClient.delete('/auth/deleteaccount', { data: accountData });
       return response.data.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || error.message || 'Failed to delete account');

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import chatService from '../services/chatService';
+import { currencySymbols } from '../utils/formatters';
 
 // ==== ASYNC THUNKS ====
 
@@ -80,7 +81,10 @@ export const sendMessage = createAsyncThunk(
         }
       }
 
-      const result = await chatService.sendMessage(messageText, conversationHistory, vaultId);
+      const currencyCode = state.auth?.preferences?.currency || 'INR';
+      const currencySymbol = currencySymbols[currencyCode] || '₹';
+
+      const result = await chatService.sendMessage(messageText, conversationHistory, vaultId, currencySymbol);
       return result;
 
     } catch (error) {

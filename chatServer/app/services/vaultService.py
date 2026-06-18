@@ -111,7 +111,12 @@ class VaultService:
             vault_col = Database.vault_collection()
             result = await vault_col.update_one(
                 {"_id": ObjectId(vault_id) if not isinstance(vault_id, ObjectId) else vault_id},
-                {"$set": {"isProcessedForRAG": True}}
+                {
+                    "$set": {
+                        "isProcessedForRAG": True,
+                        "pdfPassword": ""
+                    }
+                }
             )
             if result.modified_count > 0:
                 logger.info(f"Marked vault {vault_id} as processed")

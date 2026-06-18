@@ -23,7 +23,8 @@ const notificationSchema = new mongoose.Schema({
       'low_balance',
       'savings_reminder',
       'system_update',
-      'security_alert'
+      'security_alert',
+      'session_terminated'
     ]
   },
   priority: {

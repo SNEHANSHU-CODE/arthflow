@@ -54,7 +54,7 @@ def _classify_intent(query: str) -> Dict[str, bool]:
 # Data formatting helpers
 # ---------------------------------------------------------------------------
 
-def _fmt_transactions(transactions: List[Dict]) -> str:
+def _fmt_transactions(transactions: List[Dict], currency_symbol: str = "₹") -> str:
     if not transactions:
         return "No transactions found for this period."
     lines = []
@@ -65,12 +65,12 @@ def _fmt_transactions(transactions: List[Dict]) -> str:
             date_str = d.strftime("%b %d") if isinstance(d, datetime) else str(d)[:10]
         lines.append(
             f"  • [{date_str}] {t.get('type','?')} | {t.get('category','?')} | "
-            f"₹{t.get('amount', 0):,.2f} — {t.get('description','')}"
+            f"{currency_symbol}{t.get('amount', 0):,.2f} — {t.get('description','')}"
         )
     return "\n".join(lines)
 
 
-def _fmt_goals(goals: List[Dict]) -> str:
+def _fmt_goals(goals: List[Dict], currency_symbol: str = "₹") -> str:
     if not goals:
         return "No goals found."
     lines = []
@@ -81,7 +81,7 @@ def _fmt_goals(goals: List[Dict]) -> str:
             target_date = d.strftime("%b %d, %Y") if isinstance(d, datetime) else str(d)[:10]
         lines.append(
             f"  • {g.get('name','?')} | {g.get('status','?')} | "
-            f"₹{g.get('savedAmount',0):,.0f} / ₹{g.get('targetAmount',0):,.0f} "
+            f"{currency_symbol}{g.get('savedAmount',0):,.0f} / {currency_symbol}{g.get('targetAmount',0):,.0f} "
             f"({g.get('progressPercentage',0)}%) | Due: {target_date}"
         )
     return "\n".join(lines)
@@ -102,7 +102,7 @@ def _fmt_reminders(reminders: List[Dict]) -> str:
     return "\n".join(lines)
 
 
-def _fmt_budgets(budget: Dict) -> str:
+def _fmt_budgets(budget: Dict, currency_symbol: str = "₹") -> str:
     if not budget or not budget.get("hasBudget"):
         return "No budget set for this month."
     
@@ -112,28 +112,28 @@ def _fmt_budgets(budget: Dict) -> str:
     month_name = datetime(year, month, 1).strftime("%B %Y") if month and year else "Current"
     
     lines.append(f"📌 Budget: {month_name}")
-    lines.append(f"  Total Budget: ₹{budget.get('totalBudget', 0):,.2f}")
-    lines.append(f"  Total Spent: ₹{budget.get('totalSpent', 0):,.2f}")
-    lines.append(f"  Remaining: ₹{budget.get('remaining', 0):,.2f}")
+    lines.append(f"  Total Budget: {currency_symbol}{budget.get('totalBudget', 0):,.2f}")
+    lines.append(f"  Total Spent: {currency_symbol}{budget.get('totalSpent', 0):,.2f}")
+    lines.append(f"  Remaining: {currency_symbol}{budget.get('remaining', 0):,.2f}")
     lines.append(f"  Utilization: {budget.get('utilizationPercentage', 0):.1f}%")
     
     categories = budget.get("categories", [])
     if categories:
         lines.append("  Category Limits:")
         for cat in categories[:10]:  # cap at 10 categories
-            lines.append(f"    • {cat.get('name', '?')}: ₹{cat.get('limit', 0):,.2f}")
+            lines.append(f"    • {cat.get('name', '?')}: {currency_symbol}{cat.get('limit', 0):,.2f}")
     
     return "\n".join(lines)
 
 
-def _fmt_monthly_summary(summary: Dict) -> str:
+def _fmt_monthly_summary(summary: Dict, currency_symbol: str = "₹") -> str:
     if not summary:
         return "No summary available."
     s = summary.get("summary", summary)  # handle nested or flat
     return (
-        f"  Income:    ₹{s.get('totalIncome', 0):,.2f}\n"
-        f"  Expenses:  ₹{s.get('totalExpenses', 0):,.2f}\n"
-        f"  Savings:   ₹{s.get('netSavings', 0):,.2f}\n"
+        f"  Income:    {currency_symbol}{s.get('totalIncome', 0):,.2f}\n"
+        f"  Expenses:  {currency_symbol}{s.get('totalExpenses', 0):,.2f}\n"
+        f"  Savings:   {currency_symbol}{s.get('netSavings', 0):,.2f}\n"
         f"  Save Rate: {s.get('savingsRate', 0):.1f}%\n"
         f"  Txn Count: {s.get('transactionCount', 0)}"
     )
@@ -181,7 +181,7 @@ class AIOrchestrator:
     # ------------------------------------------------------------------
 
     async def _fetch_user_context(
-        self, user_id: str, intent: Dict[str, bool], query: str = ""
+        self, user_id: str, intent: Dict[str, bool], query: str = "", currency_symbol: str = "₹"
     ) -> Dict[str, Any]:
         """
         Fetch only the data relevant to the detected intent.
@@ -204,8 +204,8 @@ class AIOrchestrator:
                 monthly = await self.tx_service.get_monthly_summary(
                     user_id, now.month, now.year
                 )
-                context["transactions"] = _fmt_transactions(transactions)
-                context["monthly_summary"] = _fmt_monthly_summary(monthly)
+                context["transactions"] = _fmt_transactions(transactions, currency_symbol)
+                context["monthly_summary"] = _fmt_monthly_summary(monthly, currency_symbol)
                 logger.info(f"✅ Fetched {len(transactions)} transactions for user {user_id}")
             except Exception as e:
                 logger.error(f"❌ Error fetching transactions: {e}")
@@ -216,7 +216,7 @@ class AIOrchestrator:
             try:
                 goals = await self.goal_service.get_goals_by_user(user_id)
                 goal_summary = await self.goal_service.get_goal_summary(user_id)
-                context["goals"] = _fmt_goals(goals)
+                context["goals"] = _fmt_goals(goals, currency_symbol)
                 context["goal_summary"] = (
                     f"  Total: {goal_summary['totalGoals']} | "
                     f"Active: {goal_summary['activeGoals']} | "
@@ -250,7 +250,7 @@ class AIOrchestrator:
         if intent.get("needs_budgets"):
             try:
                 budget_summary = await self.budget_service.get_budget_summary(user_id)
-                context["budgets"] = _fmt_budgets(budget_summary)
+                context["budgets"] = _fmt_budgets(budget_summary, currency_symbol)
                 logger.info(f"✅ Fetched budget summary for user {user_id}")
             except Exception as e:
                 logger.error(f"❌ Error fetching budgets: {e}")
@@ -351,6 +351,7 @@ Response Structure:
         user_id: str,
         query: str,
         provider: Optional[str] = None,
+        currency_symbol: str = "₹"
     ) -> tuple:
         """
         Compile state, context, and fetch LLM for authenticated query.
@@ -359,7 +360,7 @@ Response Structure:
         intent = _classify_intent(query)
         logger.info(f"🔍 Intent detected: {intent}")
 
-        context = await self._fetch_user_context(user_id, intent, query)
+        context = await self._fetch_user_context(user_id, intent, query, currency_symbol)
         system_prompt = self._build_system_prompt(context, intent)
 
         memory = self.get_user_memory(user_id)
@@ -381,6 +382,7 @@ Response Structure:
         user_id: str,
         query: str,
         provider: Optional[str] = None,
+        currency_symbol: str = "₹"
     ) -> Dict[str, Any]:
         """
         Process query from authenticated user.
@@ -391,7 +393,7 @@ Response Structure:
         """
         try:
             logger.info(f"📝 Processing authenticated query for user {user_id}")
-            messages, llm, provider, memory = await self.prepare_authenticated_query(user_id, query, provider)
+            messages, llm, provider, memory = await self.prepare_authenticated_query(user_id, query, provider, currency_symbol)
 
             logger.info(f"🧠 Invoking LLM ({provider}) for authenticated user...")
             response = None
@@ -423,13 +425,11 @@ Response Structure:
                 else:
                     raise Exception(f"Gemini failed (ultimate fallback): {invoke_error}")
 
-            # Step 7: Extract response then persist BOTH messages in order.
-            # Saving AFTER the LLM call means no orphaned human message if LLM fails.
+            # Step 7: Extract response.
+            # Message persistence is now handled strictly by the calling handler (e.g. websocket handlers.py)
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
-            await memory.add_message(query, message_type="human")
-            await memory.add_message(response_text, message_type="ai", metadata={"provider": provider})
 
             logger.info(f"✅ Response generated for authenticated user {user_id}")
 
@@ -475,14 +475,14 @@ Response Structure:
             top_k=5,
         )
 
-        # ── Smart hybrid: fall back to normal finance AI if score too low ──
+        # ── Strict RAG constraint: Do NOT fall back to finance AI if score is too low ──
         if not rag_context or top_score < self.RAG_RELEVANCE_THRESHOLD:
             logger.info(
-                "📊 RAG score %.3f below threshold %.2f — falling back to finance AI for query: %s",
+                "📊 RAG score %.3f below threshold %.2f — returning NO MATCH for query: %s",
                 top_score, self.RAG_RELEVANCE_THRESHOLD, query,
             )
-            messages, llm, provider, memory = await self.prepare_authenticated_query(user_id, query, provider)
-            return messages, llm, provider, memory, {"is_rag": False}
+            memory = self.get_user_memory(user_id)
+            return None, None, None, memory, {"no_match": True, "document_name": document_name}
 
         memory = self.get_user_memory(user_id)
         history = await memory.get_rag_history(document_name)
@@ -531,6 +531,19 @@ Response Structure:
             logger.info("📄 Processing RAG query for user %s (vault=%s)", user_id, vault_id)
             messages, llm, provider, memory, metadata = await self.prepare_rag_query(query, user_id, vault_id, provider)
 
+            if metadata.get("no_match", False):
+                return {
+                    "status": "success",
+                    "user_id": user_id,
+                    "is_authenticated": True,
+                    "is_rag": True,
+                    "document_name": metadata.get("document_name", ""),
+                    "provider": "informational",
+                    "query": query,
+                    "response": "I don't see any record of that in the provided document.",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            
             if not metadata.get("is_rag", False):
                 return await self.process_authenticated_query(user_id, query, provider)
 
@@ -546,10 +559,8 @@ Response Structure:
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
-            # Save both messages after successful LLM call (same fix as auth pipeline)
-            await memory.add_message(query, message_type="human")
-            await memory.add_message(response_text, message_type="ai", metadata={"provider": provider, "is_rag": True})
-
+            # Step 5: Message persistence is now handled strictly by the calling handler
+            # (e.g. websocket handlers.py)
             logger.info("✅ RAG response generated for user %s", user_id)
 
             return {

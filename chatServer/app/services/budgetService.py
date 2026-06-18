@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 logger = logging.getLogger(__name__)
 
 
-def _enrich(doc: Dict[str, Any]) -> Dict[str, Any]:
+def _enrich(doc: Dict[str, Any], computed_spent: float = 0.0) -> Dict[str, Any]:
     """
     Convert ObjectIds to strings and attach calculated virtual fields.
     Called once per document — never duplicated across query methods.
@@ -23,9 +23,9 @@ def _enrich(doc: Dict[str, Any]) -> Dict[str, Any]:
 
     total_budget = doc.get("totalBudget", 0)
     
-    # Note: totalSpent would come from a separate transaction query
-    # For now, we only calculate from the budget data itself
-    total_spent = doc.get("totalSpent", 0)  # This should be populated by caller if needed
+    # Use dynamically computed spent amount from transactions
+    total_spent = computed_spent
+    doc["totalSpent"] = total_spent
     
     doc["remaining"] = max(0.0, total_budget - total_spent)
     doc["utilizationPercentage"] = (
@@ -37,6 +37,7 @@ def _enrich(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 class BudgetService:
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
+        self.db = db
         self.collection = db.budgets
 
     # ------------------------------------------------------------------
@@ -58,7 +59,34 @@ class BudgetService:
                     "year": year,
                 }
             )
-            return _enrich(doc) if doc else None
+            if not doc:
+                return None
+            
+            import calendar
+            from datetime import datetime
+            start_date = datetime(year, month, 1)
+            last_day = calendar.monthrange(year, month)[1]
+            end_date = datetime(year, month, last_day, 23, 59, 59)
+            
+            pipeline = [
+                {
+                    "$match": {
+                        "userId": ObjectId(user_id),
+                        "type": "Expense",
+                        "date": {"$gte": start_date, "$lte": end_date}
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": None,
+                        "total": {"$sum": {"$abs": "$amount"}}
+                    }
+                }
+            ]
+            result = await self.db.transactions.aggregate(pipeline).to_list(1)
+            total_spent = result[0]["total"] if result else 0.0
+            
+            return _enrich(doc, computed_spent=total_spent)
 
         except Exception as e:
             logger.error(

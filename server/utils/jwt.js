@@ -6,17 +6,17 @@ const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET || 'your-reset-secret-key'
 const JWT_REGISTRATION_SECRET = process.env.JWT_REGISTRATION_SECRET || 'your-registration-secret-key';
 
 class JWTUtils {
-  static generateAccessToken(userId) {
+  static generateAccessToken(userId, sessionId = null) {
     return jwt.sign(
-      { userId, type: 'access' },
+      { userId, type: 'access', sessionId },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
   }
 
-  static generateRefreshToken(userId) {
+  static generateRefreshToken(userId, sessionId = null) {
     return jwt.sign(
-      { userId, type: 'refresh' },
+      { userId, type: 'refresh', sessionId },
       JWT_REFRESH_SECRET,
       { expiresIn: '7d' }
     );
@@ -46,10 +46,13 @@ class JWTUtils {
     }
   }
 
-  static generateTokenPair(userId) {
+  static generateTokenPair(userId, sessionId = null) {
+    const mongoose = require('mongoose');
+    const sid = sessionId || new mongoose.Types.ObjectId().toString();
     return {
-      accessToken: this.generateAccessToken(userId),
-      refreshToken: this.generateRefreshToken(userId)
+      accessToken: this.generateAccessToken(userId, sid),
+      refreshToken: this.generateRefreshToken(userId, sid),
+      sessionId: sid
     };
   }
 

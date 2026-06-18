@@ -157,7 +157,7 @@ const resolvers = {
   },
 
   Mutation: {
-    generateFinancialReport: async (_, { startDate, endDate }, context) => {
+    generateFinancialReport: async (_, { startDate, endDate, currencySymbol }, context) => {
       try {
         // Authentication and validation
         if (!context.user) {
@@ -216,7 +216,7 @@ const resolvers = {
         const dateRange = { startDate, endDate };
         // Fetch user from DB to get name (since JWT only has email/id)
         const dbUser = await User.findById(context.user.id);
-        const userInfo = { name: dbUser?.name || dbUser?.email || context.user.email, email: context.user.email };
+        const userInfo = { name: dbUser?.username || dbUser?.email || context.user.email, email: context.user.email };
         const fileName = `Financial_Report_${context.user.id}_${Date.now()}.pdf`;
 
         try {
@@ -224,7 +224,8 @@ const resolvers = {
             analyticsData,
             dateRange,
             userInfo,
-            fileName
+            fileName,
+            currencySymbol
           );
           console.log(`✅ Report generated: ${result.fileName}`);
 

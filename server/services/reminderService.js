@@ -74,11 +74,11 @@ class ReminderService {
         description: reminder.description || '',
         start: {
           dateTime: new Date(reminder.date).toISOString(),
-          timeZone: 'Asia/Kolkata',
+          timeZone: reminder.timeZone || 'UTC',
         },
         end: {
           dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString(),
-          timeZone: 'Asia/Kolkata',
+          timeZone: reminder.timeZone || 'UTC',
         },
       };
 
@@ -108,11 +108,11 @@ class ReminderService {
         description: reminder.description || '',
         start: {
           dateTime: new Date(reminder.date).toISOString(),
-          timeZone: 'Asia/Kolkata',
+          timeZone: reminder.timeZone || 'UTC',
         },
         end: {
           dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString(),
-          timeZone: 'Asia/Kolkata',
+          timeZone: reminder.timeZone || 'UTC',
         },
       };
 
@@ -143,7 +143,7 @@ class ReminderService {
   }
 
   async createReminder(userId, data) {
-    const { title, date, description } = data;
+    const { title, date, description, timeZone } = data;
     if (!title || !date) throw new Error('Title and date are required');
 
     const reminder = new Reminder({
@@ -151,6 +151,7 @@ class ReminderService {
       title: title.trim(),
       date: new Date(date),
       description: description?.trim() || '',
+      timeZone: timeZone || 'UTC'
     });
 
     const saved = await reminder.save();
@@ -172,6 +173,7 @@ class ReminderService {
     if (data.title !== undefined) reminder.title = data.title.trim();
     if (data.date !== undefined) reminder.date = new Date(data.date);
     if (data.description !== undefined) reminder.description = data.description.trim();
+    if (data.timeZone !== undefined) reminder.timeZone = data.timeZone;
 
     const updated = await reminder.save();
 

@@ -97,7 +97,7 @@ const getAuthorizedClient = async (userId) => {
   }
 };
 
-const syncAllRemindersToGoogle = async (userId) => {
+const syncAllRemindersToGoogle = async (userId, userTimezone = 'UTC') => {
   try {
     console.log(`🔄 Starting Google Calendar sync for user: ${userId}`);
     const calendar = await getAuthorizedClient(userId);
@@ -114,11 +114,11 @@ const syncAllRemindersToGoogle = async (userId) => {
             description: reminder.description || '',
             start: { 
               dateTime: new Date(reminder.date).toISOString(),
-              timeZone: 'Asia/Kolkata'
+              timeZone: userTimezone
             },
             end: { 
               dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString(),
-              timeZone: 'Asia/Kolkata'
+              timeZone: userTimezone
             },
           };
 
@@ -150,9 +150,12 @@ const syncAllRemindersToGoogle = async (userId) => {
 googleRouter.post('/', authenticateToken, (req, res) => {
   try {
     const userId = req.userId.toString();
+    const timeZone = req.body.timeZone || 'UTC';
     console.log('🔐 Generating OAuth URL for user:', userId);
     
-    const url = getAuthUrl(userId);
+    // Encode both userId and timeZone in the state parameter
+    const stateStr = JSON.stringify({ userId, timeZone });
+    const url = getAuthUrl(Buffer.from(stateStr).toString('base64'));
     console.log('✅ OAuth URL generated successfully');
     
     res.status(200).json({ success: true, url });
@@ -181,11 +184,26 @@ googleRouter.get('/auth', authenticateToken, (req, res) => {
 // Step 2: Google redirects back after user grants access
 googleRouter.get('/callback', async (req, res) => {
   try {
-    const { code, state: userId, error: oauthError } = req.query;
+    const { code, state, error: oauthError } = req.query;
+    
+    let userId = state;
+    let timeZone = 'UTC';
+    try {
+      if (state) {
+        const decoded = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+        if (decoded && decoded.userId) {
+          userId = decoded.userId;
+          timeZone = decoded.timeZone || 'UTC';
+        }
+      }
+    } catch (e) {
+      // Fallback if state is just userId (e.g. from an old auth flow)
+      userId = state;
+    }
     
     console.log('📥 OAuth callback received');
     console.log('Code present:', !!code);
-    console.log('User ID:', userId);
+    console.log('User ID:', userId, 'TimeZone:', timeZone);
     console.log('Error:', oauthError);
     
     // Check for OAuth errors
@@ -228,7 +246,7 @@ googleRouter.get('/callback', async (req, res) => {
 
     // Sync existing reminders
     console.log('🔄 Syncing reminders to Google Calendar...');
-    const syncedCount = await syncAllRemindersToGoogle(userId);
+    const syncedCount = await syncAllRemindersToGoogle(userId, timeZone);
     console.log(`✅ Synced ${syncedCount} reminders`);
 
     console.log('✅ Google OAuth flow completed successfully');

@@ -8,6 +8,9 @@ import logging
 import asyncio
 import functools
 from typing import List, Optional
+import base64
+import os
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from bson import ObjectId
 
@@ -21,6 +24,24 @@ from app.models.embeddingModel import EmbeddingInsert
 from app.utils.piiMasker import PIIMasker
 
 logger = logging.getLogger(__name__)
+
+def decrypt_pdf_password(ciphertext: str) -> str:
+    if not ciphertext:
+        return ""
+    try:
+        key_hex = os.environ.get('PDF_SECRET_KEY', '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
+        key = bytes.fromhex(key_hex)
+        data = base64.b64decode(ciphertext)
+        iv = data[:12]
+        tag = data[12:28]
+        enc_data = data[28:]
+        
+        aesgcm = AESGCM(key)
+        decrypted = aesgcm.decrypt(iv, enc_data + tag, None)
+        return decrypted.decode('utf-8')
+    except Exception as e:
+        logger.error("Failed to decrypt password: %s", e)
+        return ciphertext # graceful fallback
 
 
 class RAGPipeline:
@@ -47,7 +68,7 @@ class RAGPipeline:
                         base64_data=vault.data,
                         original_name=vault.originalName,
                         mime_type=vault.mimeType,
-                        password=vault.pdfPassword or "",
+                        password=decrypt_pdf_password(vault.pdfPassword) if vault.pdfPassword else "",
                     )
                 )
                 if not chunks:

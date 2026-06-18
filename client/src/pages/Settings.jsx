@@ -23,7 +23,7 @@ import {
   terminateAllSessionsAction,
   toggleMFA
 } from "../app/authSlice";
-import SessionInfo from "../components/SessionInfo";
+
 
 export default function Settings() {
   const dispatch = useDispatch();
@@ -230,7 +230,7 @@ export default function Settings() {
                       >
                         {preferencesLoading ? (
                           <>
-                            <FaSpinner className="me-2 spinner-border spinner-border-sm" />
+                            <div className="spinner-border spinner-border-sm me-2" role="status"></div>
                             Saving
                           </>
                         ) : (
@@ -290,7 +290,7 @@ export default function Settings() {
                         <FaDesktop className="me-2" />
                         Active Sessions
                       </h5>
-                      <SessionInfo />
+
                     </div>
                     {sessions.length > 1 && (
                       <button 
@@ -307,7 +307,7 @@ export default function Settings() {
                 <div className="card-body p-0">
                   {sessionsLoading && !sessions.length ? (
                     <div className="p-3 text-center">
-                      <FaSpinner className="spinner-border me-2" />
+                      <div className="spinner-border spinner-border-sm me-2" role="status"></div>
                       Loading sessions
                     </div>
                   ) : sessions.length === 0 ? (
@@ -353,34 +353,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* User Info Display (for debugging/verification) */}
-              {user && (
-                <div className="card shadow-sm mt-4">
-                  <div className="card-header bg-white border-bottom">
-                    <h5 className="mb-0">Current User Info</h5>
-                  </div>
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-6">
-                        <strong>Username:</strong> {user.username}
-                      </div>
-                      <div className="col-md-6">
-                        <strong>Email:</strong> {user.email}
-                      </div>
-                    </div>
-                    <div className="row mt-2">
-                      <div className="col-12">
-                        <strong>Current Preferences:</strong>
-                        <ul className="list-unstyled mt-1 ms-3">
-                          <li>Currency: {preferences.currency}</li>
-                          <li>Theme: {preferences.theme}</li>
-                          <li>Two-Factor Auth: {preferences.mfaEnabled ? 'Enabled' : 'Disabled'}</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+
             </div>
           </div>
         </div>

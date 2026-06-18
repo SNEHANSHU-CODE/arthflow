@@ -42,7 +42,13 @@ const transactionSchema = new mongoose.Schema({
   date: {
     type: Date,
     default: Date.now,
-    required: [true, 'Transaction date is required']
+    required: [true, 'Transaction date is required'],
+    validate: {
+      validator: function(value) {
+        return value <= new Date();
+      },
+      message: 'Transaction date cannot be in the future'
+    }
   },
   paymentMethod: {
     type: String,
@@ -112,6 +118,11 @@ const transactionSchema = new mongoose.Schema({
       default: false
     },
     migratedAt: Date
+  },
+  _fingerprint: {
+    type: String,
+    index: true,
+    select: false
   }
 }, {
   timestamps: true,

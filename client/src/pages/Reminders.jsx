@@ -60,7 +60,6 @@ export default function Reminders() {
     setEditingReminder(null);
     setReminderText('');
     setTime('');
-    setAmpm('AM');
     setShowModal(true);
   };
 

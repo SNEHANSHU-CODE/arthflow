@@ -359,9 +359,9 @@ class PdfReportService {
                 widths: ['*', '*'],
                 body: [
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Amount', style: 'tableHeader' }],
-                  ['Total Income', { text: `₹${(summary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
-                  ['Total Expenses', { text: `₹${(summary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
-                  ['Net Savings', { text: `₹${(summary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Total Income', { text: `${(summary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Total Expenses', { text: `${(summary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
+                  ['Net Savings', { text: `${(summary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
                   ['Savings Rate', { text: `${(summary.savingsRate || 0).toFixed(2)}%`, style: 'neutral' }]
                 ]
               }
@@ -379,9 +379,9 @@ class PdfReportService {
                 widths: ['*', '*'],
                 body: [
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Amount', style: 'tableHeader' }],
-                  ['Income', { text: `₹${(currentMonthSummary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
-                  ['Expenses', { text: `₹${(currentMonthSummary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
-                  ['Savings', { text: `₹${(currentMonthSummary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Income', { text: `${(currentMonthSummary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Expenses', { text: `${(currentMonthSummary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
+                  ['Savings', { text: `${(currentMonthSummary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
                   ['Savings %', { text: `${(currentMonthSummary.savingsRate || 0).toFixed(2)}%`, style: 'neutral' }]
                 ]
               }
@@ -403,7 +403,7 @@ class PdfReportService {
       txn.description || txn.category,
       txn.category,
       txn.date,
-      { text: `₹${(txn.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(txn.amount || 0).toFixed(2)}`, alignment: 'right' },
       { text: (txn.type || 'unknown').toUpperCase(), style: (txn.type || '' ) === 'income' ? 'positive' : 'negative' }
     ]);
 
@@ -441,14 +441,14 @@ class PdfReportService {
 
     const trendsTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `₹${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
-      { text: `₹${(t.totalExpenses || 0).toFixed(2)}`, alignment: 'right', style: 'negative' },
-      { text: `₹${(t.netSavings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
+      { text: `${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
+      { text: `${(t.totalExpenses || 0).toFixed(2)}`, alignment: 'right', style: 'negative' },
+      { text: `${(t.netSavings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
     ]);
 
     const categoryTable = categories.slice(0, 8).map(c => [
       c.category,
-      { text: `₹${(c.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(c.amount || 0).toFixed(2)}`, alignment: 'right' },
       { text: `${(c.percentage || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
@@ -511,7 +511,7 @@ class PdfReportService {
 
     const incomeTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `₹${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
+      { text: `${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
     ]);
 
     return {
@@ -549,7 +549,7 @@ class PdfReportService {
                     widths: ['*', '*'],
                     body: [
                       [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
-                      ['Average Monthly Income', { text: `₹${(avgIncome || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Average Monthly Income', { text: `${(avgIncome || 0).toFixed(2)}`, style: 'positive' }],
                       ['Total Months', trends.length.toString()],
                       ['Highest Month', trends.length > 0 ? trends.reduce((max, t) => t.totalIncome > max.totalIncome ? t : max).monthYear : 'N/A']
                     ]
@@ -575,7 +575,7 @@ class PdfReportService {
 
     const savingsTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `₹${(t.savings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
+      { text: `${(t.savings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
       { text: `${(t.savingsRate || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
@@ -615,10 +615,10 @@ class PdfReportService {
                     widths: ['*', '*'],
                     body: [
                       [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
-                      ['Total Savings', { text: `₹${(totalSavings || 0).toFixed(2)}`, style: 'positive' }],
-                      ['Average Monthly', { text: `₹${(avgSavings || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Total Savings', { text: `${(totalSavings || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Average Monthly', { text: `${(avgSavings || 0).toFixed(2)}`, style: 'positive' }],
                       ['Best Month', bestMonth.month || 'N/A'],
-                      ['Best Month Amount', bestMonth.amount ? `₹${bestMonth.amount.toFixed(2)}` : 'N/A']
+                      ['Best Month Amount', bestMonth.amount ? `${bestMonth.amount.toFixed(2)}` : 'N/A']
                     ]
                   }
                 }
@@ -642,8 +642,8 @@ class PdfReportService {
       g.name || 'Unnamed Goal',
       g.category || 'N/A',
       { text: `${(g.progress || 0).toFixed(2)}%`, alignment: 'right' },
-      { text: `₹${(g.savedAmount || 0).toFixed(2)}`, alignment: 'right' },
-      { text: `₹${(g.targetAmount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(g.savedAmount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(g.targetAmount || 0).toFixed(2)}`, alignment: 'right' },
       { 
         text: g.status || 'Unknown', 
         alignment: 'center',
@@ -714,9 +714,9 @@ class PdfReportService {
 
     const budgetTable = categories.map(c => [
       c.category,
-      { text: `₹${(c.budgeted || 0).toFixed(2)}`, alignment: 'right' },
-      { text: `₹${(c.spent || 0).toFixed(2)}`, alignment: 'right' },
-      { text: `₹${(c.remaining || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(c.budgeted || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(c.spent || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(c.remaining || 0).toFixed(2)}`, alignment: 'right' },
       { text: `${(c.percentageUsed || 0).toFixed(2)}%`, alignment: 'right' },
       { 
         text: c.status, 
@@ -792,7 +792,7 @@ class PdfReportService {
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
                   ['Total Transactions', totalTransactions.toString()],
                   ['Daily Average', (dailyAverage || 0).toFixed(2)],
-                  ['Average Amount/Day', `₹${(averagePerDay || 0).toFixed(2)}`],
+                  ['Average Amount/Day', `${(averagePerDay || 0).toFixed(2)}`],
                   ['Top Category', topCategory]
                 ]
               }
@@ -812,11 +812,11 @@ class PdfReportService {
                   [{ text: 'Type', style: 'tableHeader' }, { text: 'Details', style: 'tableHeader' }],
                   [
                     'Highest',
-                    `${maxTransaction.description || 'N/A'}\n₹${(maxTransaction.amount || 0).toFixed(2)}\n${maxTransaction.date || 'N/A'}`
+                    `${maxTransaction.description || 'N/A'}\n${(maxTransaction.amount || 0).toFixed(2)}\n${maxTransaction.date || 'N/A'}`
                   ],
                   [
                     'Lowest',
-                    `${minTransaction.description || 'N/A'}\n₹${(minTransaction.amount || 0).toFixed(2)}\n${minTransaction.date || 'N/A'}`
+                    `${minTransaction.description || 'N/A'}\n${(minTransaction.amount || 0).toFixed(2)}\n${minTransaction.date || 'N/A'}`
                   ]
                 ]
               }
@@ -837,7 +837,7 @@ class PdfReportService {
 
     const breakdownTable = breakdown.slice(0, 8).map(b => [
       b.category,
-      { text: `₹${(b.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${(b.amount || 0).toFixed(2)}`, alignment: 'right' },
       { text: `${(b.percentage || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
@@ -854,9 +854,9 @@ class PdfReportService {
                 widths: ['*', '*'],
                 body: [
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Amount', style: 'tableHeader' }],
-                  ['Total Income', { text: `₹${(summary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
-                  ['Total Expenses', { text: `₹${(summary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
-                  ['Net Savings', { text: `₹${(summary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Total Income', { text: `${(summary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Total Expenses', { text: `${(summary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
+                  ['Net Savings', { text: `${(summary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
                   ['Savings Rate', { text: `${(summary.savingsRate || 0).toFixed(2)}%`, style: 'neutral' }]
                 ]
               }

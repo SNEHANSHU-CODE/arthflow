@@ -17,7 +17,7 @@ const authenticateToken = async (req, res, next) => {
       return ResponseUtils.unauthorized(res, 'Invalid token type');
     }
 
-    const user = await User.findById(decoded.userId).select('-password -refreshTokens');
+    const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
       return ResponseUtils.unauthorized(res, 'User not found');
@@ -26,12 +26,20 @@ const authenticateToken = async (req, res, next) => {
     if (!user.isActive) {
       return ResponseUtils.forbidden(res, 'Account is deactivated');
     }
+
+    // Validate that the session is still active
+    if (decoded.sessionId) {
+      const isSessionActive = user.refreshTokens.some(rt => rt._id.toString() === decoded.sessionId);
+      if (!isSessionActive) {
+        return ResponseUtils.unauthorized(res, 'Session terminated');
+      }
+    }
     req.user = user;
     req.userId = user._id;
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    return ResponseUtils.forbidden(res, 'Invalid or expired token');
+    return ResponseUtils.unauthorized(res, 'Invalid or expired token');
   }
 };
 
@@ -42,11 +50,18 @@ const optionalAuth = async (req, res, next) => {
 
     if (token) {
       const decoded = JWTUtils.verifyAccessToken(token);
-      const user = await User.findById(decoded.userId).select('-password -refreshTokens');
+      const user = await User.findById(decoded.userId).select('-password');
       
       if (user && user.isActive) {
-        req.user = user;
-        req.userId = user._id;
+        let isSessionActive = true;
+        if (decoded.sessionId) {
+          isSessionActive = user.refreshTokens.some(rt => rt._id.toString() === decoded.sessionId);
+        }
+        
+        if (isSessionActive) {
+          req.user = user;
+          req.userId = user._id;
+        }
       }
     }
     

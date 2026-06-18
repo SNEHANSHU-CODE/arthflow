@@ -224,7 +224,7 @@ class ChatService {
    * The Redux thunk (sendMessage in chatSlice) must NOT add any bot message
    * on its own — its only job is to trigger the emit and set loading state.
    */
-  sendMessage(message, conversationHistory = [], vaultId = null) {
+  sendMessage(message, conversationHistory = [], vaultId = null, currencySymbol = '₹') {
     return new Promise((resolve, reject) => {
       if (!this.socket?.connected) {
         console.error('[chatService] Cannot send message - socket not connected');
@@ -252,6 +252,7 @@ class ChatService {
         vault_id: vaultId || null,
         timestamp: new Date().toISOString(),
         requestId: reqId,
+        currencySymbol,
       });
 
       // Resolve immediately — bot_response arrives asynchronously via socket

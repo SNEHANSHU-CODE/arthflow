@@ -17,7 +17,28 @@ export default function NotificationBell() {
 
   // Real-time socket push
   useEffect(() => {
-    const handleNotification = (data) => dispatch(addNotification(data));
+    const handleNotification = async (data) => {
+      if (data.type === 'session_terminated') {
+        const sessionStr = sessionStorage.getItem('arthflow_session');
+        if (sessionStr) {
+          try {
+            const session = JSON.parse(sessionStr);
+            if (session.token) {
+              const payload = JSON.parse(atob(session.token.split('.')[1]));
+              if (payload.sessionId === data.data?.sessionId) {
+                console.log('Session terminated remotely. Logging out.');
+                const { logoutUser } = await import('../app/authSlice');
+                dispatch(logoutUser());
+                return;
+              }
+            }
+          } catch (e) {
+            console.error('Error handling session termination:', e);
+          }
+        }
+      }
+      dispatch(addNotification(data));
+    };
     chatService.on('notification', handleNotification);
     return () => chatService.off('notification', handleNotification);
   }, [dispatch]);

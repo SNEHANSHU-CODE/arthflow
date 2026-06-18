@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 50
     CRON_INTERVAL_SECONDS: int = 30
 
-    NOTIFICATION_POLL_SECONDS: int = 30
+    NOTIFICATION_POLL_SECONDS: int = 5
 
     OCR_SPACE_API_KEY: str = "key"
 

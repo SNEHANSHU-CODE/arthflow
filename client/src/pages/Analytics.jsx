@@ -51,7 +51,7 @@ const AnalyticsDashboard = () => {
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
 
   const accessToken = useSelector((state) => state.auth?.accessToken);
-  const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, isDark } = useSettings();
+  const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, isDark, getCurrencySymbol } = useSettings();
 
   useEffect(() => {
     const getDateRange = (period) => {
@@ -120,17 +120,35 @@ const AnalyticsDashboard = () => {
   const hasNoData = validatedData.isEmpty;
 
   const safeTrends = useMemo(() => {
-    console.log(spendingTrends);
-    return (spendingTrends?.trends || []).map(item => ({
+    const rawTrends = (spendingTrends?.trends || []).map(item => ({
       monthYear: item.monthYear,
       totalIncome: toNumber(item.totalIncome),
       totalExpenses: Math.abs(toNumber(item.totalExpenses)), // Convert to positive
       netSavings: toNumber(item.netSavings),
     }));
-  }, [spendingTrends]);
+
+    if (!dateRange.startDate || !dateRange.endDate) return rawTrends;
+    
+    const start = new Date(dateRange.startDate);
+    const end = new Date(dateRange.endDate);
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 35) {
+      const filled = [];
+      let curr = new Date(start);
+      while(curr <= end) {
+        const label = `${curr.getFullYear()}-${String(curr.getMonth()+1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+        const existing = rawTrends.find(t => t.monthYear === label);
+        filled.push(existing || { monthYear: label, totalIncome: 0, totalExpenses: 0, netSavings: 0 });
+        curr.setDate(curr.getDate() + 1);
+      }
+      return filled;
+    }
+
+    return rawTrends;
+  }, [spendingTrends, dateRange]);
 
   const safeCategories = useMemo(() => {
-    console.log(categoryData)
     return (categoryData.categories || []).map(c => ({
       category: c.category,
       amount: toNumber(c.amount),
@@ -171,7 +189,9 @@ const AnalyticsDashboard = () => {
         return;
       }
 
-      const apiUrl = (import.meta.env.VITE_ANALYTICS_URL + '/api') || 'http://localhost:5001/api';
+      const apiUrl = import.meta.env.VITE_ANALYTICS_URL
+        ? `${import.meta.env.VITE_ANALYTICS_URL}/api`
+        : 'http://localhost:5001/api';
       const url = `${apiUrl}/pdf/generate-report`;
 
       const response = await fetch(url, {
@@ -182,7 +202,8 @@ const AnalyticsDashboard = () => {
         },
         body: JSON.stringify({
           startDate: dateRange.startDate,
-          endDate: dateRange.endDate
+          endDate: dateRange.endDate,
+          currencySymbol: getCurrencySymbol()
         })
       });
 
@@ -226,7 +247,10 @@ const AnalyticsDashboard = () => {
               )}
             </div>
             <div className="col-auto">
-              <div className={`bg-${color} text-white rounded-circle p-3`}>
+              <div 
+                className={`bg-${color} text-white rounded-circle p-3 d-flex align-items-center justify-content-center`}
+                style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', aspectRatio: '1', flexShrink: 0 }}
+              >
                 {icon}
               </div>
             </div>
@@ -275,33 +299,37 @@ const AnalyticsDashboard = () => {
 
     const changeValues = getChangeValuesFromTrends();
     
+    const periodLabel = selectedPeriod === '30days' ? 'Monthly'
+      : selectedPeriod === '90days' ? '90-Day'
+      : 'Annual';
+    
     return (
       <div className="row">
         <div className="col-12 mb-4">
           <div className="row">
             <StatCard
-              title={'Monthly Income'}
+              title={`${periodLabel} Income`}
               value={dashboardData?.monthly?.summary?.totalIncome || 0}
               change={changeValues.incomeChange}
               icon={<FaWallet />}
               color="success"
             />
             <StatCard
-              title={'Monthly Expenses'}
+              title={`${periodLabel} Expenses`}
               value={dashboardData?.monthly?.summary?.totalExpenses || 0}
               change={changeValues.expenseChange}
               icon={<FaCreditCard />}
               color="danger"
             />
             <StatCard
-              title={'Net Savings'}
+              title={`${periodLabel} Net Savings`}
               value={dashboardData?.monthly?.summary?.netSavings || 0}
               change={changeValues.savingsChange}
               icon={<FaPiggyBank />}
               color="info"
             />
             <StatCard
-              title={'Savings Rate'}
+              title={`${periodLabel} Savings Rate`}
               value={`${(dashboardData?.monthly?.summary?.savingsRate || 0).toFixed(1)}%`}
               change={changeValues.savingsRateChange}
               icon={<FaChartLine />}
@@ -330,7 +358,7 @@ const AnalyticsDashboard = () => {
                   <YAxis
                     stroke={chartColors.axis}
                     tick={{ fontSize: 12, fill: chartColors.text }}
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    tickFormatter={(value) => `${getCurrencySymbol()}${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} iconType="line" />
@@ -518,7 +546,7 @@ const AnalyticsDashboard = () => {
         <YAxis
           stroke={chartColors.axis}
           tick={{ fill: chartColors.text }}
-          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+          tickFormatter={(value) => `${getCurrencySymbol()}${(value / 1000).toFixed(0)}k`}
         />
         <Tooltip
           formatter={(value) => formatCurrency(value)}
@@ -529,8 +557,8 @@ const AnalyticsDashboard = () => {
           }}
         />
         <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-          {completeCategories.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          {completeCategories.map((_, index) => (
+            <Cell key={`bar-cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Bar>
       </BarChart>
@@ -543,7 +571,7 @@ const AnalyticsDashboard = () => {
         <div className="col-12 mb-4">
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-0 py-3">
-              <h6 className="m-0 fw-bold text-primary">Monthly Spending Trends</h6>
+              <h6 className="m-0 fw-bold text-primary">Spending Trends</h6>
             </div>
             <div className="card-body">
               <ResponsiveContainer width="100%" height={300}>
@@ -560,7 +588,7 @@ const AnalyticsDashboard = () => {
                   <YAxis 
                     stroke={chartColors.axis} 
                     tick={{ fill: chartColors.text }}
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    tickFormatter={(value) => `${getCurrencySymbol()}${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area
@@ -603,7 +631,7 @@ const AnalyticsDashboard = () => {
                 <YAxis 
                   stroke={chartColors.axis} 
                   tick={{ fill: chartColors.text }}
-                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `${getCurrencySymbol()}${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Area

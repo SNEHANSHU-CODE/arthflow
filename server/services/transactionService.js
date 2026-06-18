@@ -428,8 +428,30 @@ async getCategoryAnalysis(userId) {
         };
       });
 
+      // Deduplicate by fingerprint: (userId + date + amount + description)
+      const crypto = require('crypto');
+      const fingerprint = (doc) =>
+        crypto.createHash('md5')
+          .update(`${doc.userId}|${doc.date?.toISOString?.() ?? doc.date}|${doc.amount}|${doc.description}`)
+          .digest('hex');
+
+      const fingerprintedDocs = docs.map(d => ({ ...d, _fingerprint: fingerprint(d) }));
+      const fpHashes = fingerprintedDocs.map(d => d._fingerprint);
+
+      const existing = await Transaction.find(
+        { userId, _fingerprint: { $in: fpHashes } },
+        { _fingerprint: 1 }
+      ).lean();
+
+      const existingSet = new Set(existing.map(e => e._fingerprint));
+      const newDocs = fingerprintedDocs.filter(d => !existingSet.has(d._fingerprint));
+
+      if (newDocs.length === 0) {
+        return { success: true, message: '0 new transactions — all duplicates', insertedCount: 0, data: [] };
+      }
+
       // ordered:false — continues on individual doc validation errors
-      const inserted = await Transaction.insertMany(docs, { ordered: false });
+      const inserted = await Transaction.insertMany(newDocs, { ordered: false });
 
       return {
         success: true,
@@ -438,14 +460,16 @@ async getCategoryAnalysis(userId) {
         data: inserted
       };
     } catch (error) {
-      // BulkWriteError with ordered:false = partial success, still usable
-      if (error.name === 'BulkWriteError' && error.insertedDocs?.length > 0) {
-        return {
-          success: true,
-          message: `${error.insertedDocs.length} transactions imported (${error.writeErrors?.length || 0} skipped)`,
-          insertedCount: error.insertedDocs.length,
-          data: error.insertedDocs
-        };
+      if (error.name === 'MongoBulkWriteError' || error.name === 'BulkWriteError') {
+        const insertedCount = error.result?.insertedCount ?? error.result?.nInserted ?? 0;
+        if (insertedCount > 0) {
+          return {
+            success: true,
+            message: `${insertedCount} transactions imported (${error.writeErrors?.length ?? 0} skipped)`,
+            insertedCount,
+            data: []  // insertedDocs not available on bulk error; UI shows count only
+          };
+        }
       }
       console.error('Error bulk inserting transactions:', error);
       throw error;

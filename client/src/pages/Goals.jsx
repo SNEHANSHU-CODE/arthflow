@@ -21,6 +21,10 @@ import {
   clearError
 } from "../app/goalSlice";
 
+import { formatCurrency, formatPercent } from '../utils/formatters';
+import { useSettings } from '../hooks/useSettings';
+import LoadingSpinner from '../components/LodingSpinner';
+
 import goalService from "../services/goalService";
 import { usePreferences } from "../hooks/usePreferences";
 
@@ -262,15 +266,7 @@ export default function Goals() {
 
   // Loading state
   if (loading && goals.length === 0) {
-    return (
-      <div className="container-fluid p-0">
-        <div className="text-center py-5">
-          <FaSpinner className="fa-spin text-primary mb-3" size={48} />
-          <h5>Loading Goals</h5>
-          <p className="text-muted">Please wait while we load your goals...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -313,8 +309,11 @@ export default function Goals() {
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="mb-3">
-                <div className="p-3 bg-primary bg-opacity-10 rounded-circle d-inline-flex">
-                  <FaDollarSign className="text-primary" size={24} />
+                <div 
+                  className="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10" 
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, aspectRatio: '1' }}
+                >
+                  <FaChartLine className="text-primary" size={24} />
                 </div>
               </div>
               <h5 className="fw-bold">{dashboardStats.totalGoals || 0}</h5>
@@ -326,7 +325,10 @@ export default function Goals() {
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="mb-3">
-                <div className="p-3 bg-success bg-opacity-10 rounded-circle d-inline-flex">
+                <div 
+                  className="d-inline-flex align-items-center justify-content-center rounded-circle bg-success bg-opacity-10" 
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, aspectRatio: '1' }}
+                >
                   <FaCheckCircle className="text-success" size={24} />
                 </div>
               </div>
@@ -339,8 +341,11 @@ export default function Goals() {
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="mb-3">
-                <div className="p-3 bg-info bg-opacity-10 rounded-circle d-inline-flex">
-                  <FaDollarSign className="text-info" size={24} />
+                <div 
+                  className="bg-info bg-opacity-10 rounded-circle d-inline-flex justify-content-center align-items-center"
+                  style={{ width: 56, height: 56, minWidth: 56, minHeight: 56, aspectRatio: '1' }}
+                >
+                  <span className="text-info fs-4 fw-bold">{getCurrencySymbol()}</span>
                 </div>
               </div>
               <h5 className="fw-bold">{formatCurrency(dashboardStats.totalSavedAmount)}</h5>
@@ -352,8 +357,11 @@ export default function Goals() {
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body text-center">
               <div className="mb-3">
-                <div className="p-3 bg-warning bg-opacity-10 rounded-circle d-inline-flex">
-                  <FaDollarSign className="text-warning" size={24} />
+                <div 
+                  className="bg-warning bg-opacity-10 rounded-circle d-inline-flex justify-content-center align-items-center"
+                  style={{ width: 56, height: 56, minWidth: 56, minHeight: 56, aspectRatio: '1' }}
+                >
+                  <span className="text-warning fs-4 fw-bold">{getCurrencySymbol()}</span>
                 </div>
               </div>
               <h5 className="fw-bold">{formatCurrency(dashboardStats.totalTargetAmount)}</h5>
@@ -545,7 +553,7 @@ export default function Goals() {
           <div className="col-12">
             <div className="text-center py-5">
               <div className="mb-4">
-                <FaDollarSign size={64} className="text-muted opacity-50" />
+                <span className="text-muted opacity-50 display-4 fw-bold">{getCurrencySymbol()}</span>
               </div>
               <h5>No Goals Yet</h5>
               <p className="text-muted mb-4">Create your first goal to get started</p>

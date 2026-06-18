@@ -169,6 +169,7 @@ const typeDefs = `#graphql
     generateFinancialReport(
       startDate: String!
       endDate: String!
+      currencySymbol: String
     ): PdfReportResponse
   }
 `;

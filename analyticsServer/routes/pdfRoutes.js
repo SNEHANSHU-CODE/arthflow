@@ -24,10 +24,10 @@ router.post('/generate-report', async (req, res) => {
     const userEmail = authData.user.email;
 
     // Fetch user details
-    const user = await User.findById(userId).select('name email');
-    const userName = user?.name || user?.email || userEmail || 'User';
+    const user = await User.findById(userId).select('username email');
+    const userName = user?.username || user?.email || userEmail || 'User';
 
-    const { startDate, endDate } = req.body;
+    const { startDate, endDate, currencySymbol } = req.body;
 
     // Validate inputs
     if (!startDate || !endDate) {
@@ -82,7 +82,8 @@ router.post('/generate-report', async (req, res) => {
       analyticsData,
       dateRange,
       { name: userName, email: user?.email || userEmail },
-      fileName
+      fileName,
+      currencySymbol || '₹'
     );
 
     if (!pdfResult.success) {

@@ -26,6 +26,10 @@ const reminderSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  timeZone: {
+    type: String,
+    default: 'UTC'
+  },
   amount: {
     type: Number,
     default: null

@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { fetchBudget, createBudget, updateBudget } from '../app/budgetSlice';
 import { fetchTransactions } from '../app/transactionSlice';
+import { useSettings } from '../hooks/useSettings';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -49,6 +50,7 @@ function NoBudget({ month, year, onCreateClick }) {
 
 // ─── BudgetCategoryCard ───────────────────────────────────────────────────────
 function BudgetCategoryCard({ category, spent, color }) {
+  const { formatCurrency } = useSettings();
   const { name, limit } = category;
   const remaining = limit - spent;
   const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
@@ -72,13 +74,13 @@ function BudgetCategoryCard({ category, spent, color }) {
           />
         </div>
         <div className="d-flex justify-content-between" style={{ fontSize: 13 }}>
-          <span className="text-muted">Spent: <strong className={over ? 'text-danger' : ''}>₹{spent.toLocaleString()}</strong></span>
-          <span className="text-muted">Limit: <strong>₹{limit.toLocaleString()}</strong></span>
+          <span className="text-muted">Spent: <strong className={over ? 'text-danger' : ''}>{formatCurrency(spent)}</strong></span>
+          <span className="text-muted">Limit: <strong>{formatCurrency(limit)}</strong></span>
         </div>
         <div className="mt-1" style={{ fontSize: 13 }}>
           {over
-            ? <span className="text-danger fw-semibold">₹{Math.abs(remaining).toLocaleString()} overspent</span>
-            : <span className="text-success fw-semibold">₹{remaining.toLocaleString()} remaining</span>
+            ? <span className="text-danger fw-semibold">{formatCurrency(Math.abs(remaining))} overspent</span>
+            : <span className="text-success fw-semibold">{formatCurrency(remaining)} remaining</span>
           }
         </div>
       </div>
@@ -88,6 +90,7 @@ function BudgetCategoryCard({ category, spent, color }) {
 
 // ─── UnplannedCategories ──────────────────────────────────────────────────────
 function UnplannedCategories({ items }) {
+  const { formatCurrency } = useSettings();
   if (!items.length) return null;
   return (
     <div className="alert alert-warning border-0 shadow-sm mt-3">
@@ -98,7 +101,7 @@ function UnplannedCategories({ items }) {
       <div className="d-flex flex-wrap gap-2">
         {items.map(({ category, spent }) => (
           <span key={category} className="badge bg-warning text-dark">
-            {category}: ₹{spent.toLocaleString()}
+            {category}: {formatCurrency(spent)}
           </span>
         ))}
       </div>
@@ -108,6 +111,7 @@ function UnplannedCategories({ items }) {
 
 // ─── BudgetChart ──────────────────────────────────────────────────────────────
 function BudgetChart({ chartData }) {
+  const { formatCurrency, getCurrencySymbol } = useSettings();
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -115,7 +119,7 @@ function BudgetChart({ chartData }) {
         <p className="fw-semibold mb-1">{label}</p>
         {payload.map(p => (
           <p key={p.dataKey} style={{ color: p.color, margin: 0 }}>
-            {p.name}: ₹{Number(p.value).toLocaleString()}
+            {p.name}: {formatCurrency(p.value)}
           </p>
         ))}
       </div>
@@ -150,7 +154,7 @@ function BudgetChart({ chartData }) {
           <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `${getCurrencySymbol()}${(v / 1000).toFixed(0)}k`} />
             <Tooltip content={<CustomTooltip />} />
             <Legend content={<CustomLegend />} />
             <Bar dataKey="limit" name="Budget" fill="#6366f1" radius={[4, 4, 0, 0]} />
@@ -179,6 +183,7 @@ const EXPENSE_CATEGORIES = [
 
 function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
   const dispatch = useDispatch();
+  const { getCurrencySymbol, formatCurrency } = useSettings();
   const { loading } = useSelector(s => s.budget);
 
   const initialLimits = () => {
@@ -193,10 +198,13 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
 
   const [limits, setLimits] = useState(initialLimits);
   const [error, setError]   = useState('');
+  const [activeCats, setActiveCats] = useState(() => 
+    EXPENSE_CATEGORIES.filter(name => initialLimits()[name] !== '')
+  );
 
-  const isOn     = name => limits[name] !== '';
+  const isOn     = name => activeCats.includes(name);
   const setLimit = (name, value) => setLimits(prev => ({ ...prev, [name]: value }));
-  const toggle   = name => setLimits(prev => ({ ...prev, [name]: prev[name] !== '' ? '' : '1' }));
+  const toggle   = name => setActiveCats(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
 
   const included    = EXPENSE_CATEGORIES.filter(isOn);
   const totalBudget = included.reduce((s, n) => s + (parseFloat(limits[n]) || 0), 0);
@@ -204,12 +212,16 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!included.length) return setError('Select at least one category.');
-    if (included.some(n => !(parseFloat(limits[n]) > 0)))
-      return setError('All selected categories must have a limit greater than 0.');
+    
+    if (included.some(n => parseFloat(limits[n]) < 0)) {
+      return setError('Budget limits cannot be negative.');
+    }
 
-    const categories = included.map(name => ({ name, limit: parseFloat(limits[name]) }));
-    const payload    = { month, year, categories, totalBudget };
+    const validIncluded = included.filter(n => parseFloat(limits[n]) > 0);
+    if (!validIncluded.length) return setError('Select at least one category with a valid limit greater than 0.');
+
+    const categories = validIncluded.map(name => ({ name, limit: parseFloat(limits[name]) }));
+    const payload    = { month, year, categories, totalBudget: validIncluded.reduce((s, n) => s + parseFloat(limits[n]), 0) };
     const action     = existingBudget
       ? await dispatch(updateBudget({ id: existingBudget._id, data: payload }))
       : await dispatch(createBudget(payload));
@@ -271,14 +283,25 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
                 {/* Limit input — only visible when toggled on */}
                 {isOn(name) && (
                   <div className="d-flex align-items-center gap-1">
-                    <span className="text-muted" style={{ fontSize: 13 }}>₹</span>
+                    <span className="text-muted" style={{ fontSize: 13 }}>{getCurrencySymbol()}</span>
                     <input
                       type="number"
                       className="form-control form-control-sm"
                       placeholder="Limit"
                       min="1"
                       value={limits[name]}
-                      onChange={e => setLimit(name, e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val !== '' && Number(val) < 0) {
+                          alert("Budget limit cannot be less than 0");
+                          return;
+                        }
+                        if (val === '0') {
+                          toggle(name);
+                        } else {
+                          setLimit(name, val);
+                        }
+                      }}
                       style={{ width: 110, textAlign: 'right' }}
                     />
                   </div>
@@ -294,7 +317,7 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
               </span>
               {included.length > 0 && (
                 <span className="ms-3 fw-semibold text-dark">
-                  Total: ₹{totalBudget.toLocaleString()}
+                  Total: {formatCurrency(totalBudget)}
                 </span>
               )}
             </div>
@@ -317,6 +340,7 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
 // ─── Budget (Main Page) ───────────────────────────────────────────────────────
 export default function Budget() {
   const dispatch = useDispatch();
+  const { formatCurrency } = useSettings();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear]   = useState(now.getFullYear());
@@ -424,7 +448,7 @@ export default function Budget() {
             ].map(({ label, value, color }) => (
               <div key={label} className="col-12 col-sm-4">
                 <div className="card border-0 shadow-sm text-center py-3">
-                  <div className="fw-bold fs-5" style={{ color }}>₹{value.toLocaleString()}</div>
+                  <div className="fw-bold fs-5" style={{ color }}>{formatCurrency(value)}</div>
                   <div className="text-muted" style={{ fontSize: 13 }}>{label}</div>
                 </div>
               </div>

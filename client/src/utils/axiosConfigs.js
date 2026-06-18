@@ -64,6 +64,57 @@ const processQueue = (error, token = null) => {
     failedQueue = [];
 };
 
+export const refreshTokenShared = async () => {
+    if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+        });
+    }
+
+    isRefreshing = true;
+    try {
+        const refreshResponse = await axios.post(
+            `${API_BASE_URL}/auth/refresh`,
+            {},
+            { withCredentials: true }
+        );
+
+        const newAccessToken =
+            refreshResponse.data?.data?.accessToken ||
+            refreshResponse.data?.accessToken;
+        const newUser =
+            refreshResponse.data?.data?.user ||
+            refreshResponse.data?.user;
+
+        if (!newAccessToken) throw new Error('No access token in refresh response');
+
+        const { setCredentials } = await import('../app/authSlice');
+        const currentStore = await getStore();
+        currentStore.dispatch(setCredentials({ accessToken: newAccessToken, user: newUser }));
+
+        const { default: sessionManager } = await import('../utils/sessionManager');
+        if (!sessionManager.getSession()) {
+            sessionManager.createSession(newUser, newAccessToken);
+        } else {
+            sessionManager.extendSession();
+        }
+
+        processQueue(null, newAccessToken);
+        return newAccessToken;
+    } catch (refreshError) {
+        processQueue(refreshError, null);
+        const { clearCredentials } = await import('../app/authSlice');
+        const currentStore = await getStore();
+        currentStore.dispatch(clearCredentials());
+        if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+    } finally {
+        isRefreshing = false;
+    }
+};
+
 // Response interceptor to handle token refresh
 apiClient.interceptors.response.use(
     (response) => response,
@@ -93,58 +144,11 @@ apiClient.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                // BUG 4 FIX: authService.refreshToken() uses apiClient itself —
-                // which would re-trigger THIS interceptor on failure, causing a loop.
-                // Always use a plain axios instance for the refresh call.
-                const refreshResponse = await axios.post(
-                    `${API_BASE_URL}/auth/refresh`,
-                    {},
-                    { withCredentials: true }   // httpOnly refresh cookie must be sent
-                );
-
-                const newAccessToken =
-                    refreshResponse.data?.data?.accessToken ||
-                    refreshResponse.data?.accessToken;
-
-                const newUser =
-                    refreshResponse.data?.data?.user ||
-                    refreshResponse.data?.user;
-
-                if (!newAccessToken) throw new Error('No access token in refresh response');
-
-                // Update Redux store with new credentials
-                const { setCredentials } = await import('../app/authSlice');
-                const currentStore = await getStore();
-                currentStore.dispatch(setCredentials({ accessToken: newAccessToken, user: newUser }));
-
-                // BUG 4 FIX (continued): Also update sessionManager so the
-                // 30-min sessionStorage session doesn't expire and kill the user
-                // independently of the JWT refresh cycle.
-                const { default: sessionManager } = await import('../utils/sessionManager');
-                sessionManager.extendSession();
-
-                // Unblock all queued requests with the new token
-                processQueue(null, newAccessToken);
-
-                // Retry original request
+                const newAccessToken = await refreshTokenShared();
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                 return apiClient(originalRequest);
-
             } catch (refreshError) {
-                // Refresh genuinely failed — clear everything and send to login
-                processQueue(refreshError, null);
-
-                const { clearCredentials } = await import('../app/authSlice');
-                const currentStore = await getStore();
-                currentStore.dispatch(clearCredentials());
-
-                if (window.location.pathname !== '/login') {
-                    window.location.href = '/login';
-                }
-
                 return Promise.reject(refreshError);
-            } finally {
-                isRefreshing = false;
             }
         }
 

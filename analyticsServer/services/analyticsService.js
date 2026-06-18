@@ -144,7 +144,21 @@ class AnalyticsService {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
-      // Group by month
+      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      
+      let groupId, sortGroup;
+      if (diffDays <= 35) {
+        groupId = { year: { $year: '$date' }, month: { $month: '$date' }, day: { $dayOfMonth: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.month': 1, '_id.day': 1 };
+      } else if (diffDays <= 95) {
+        groupId = { year: { $isoWeekYear: '$date' }, week: { $isoWeek: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.week': 1 };
+      } else {
+        groupId = { year: { $year: '$date' }, month: { $month: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.month': 1 };
+      }
+
+      // Group dynamically
       const trends = await Transaction.aggregate([
         {
           $match: {
@@ -154,10 +168,7 @@ class AnalyticsService {
         },
         {
           $group: {
-            _id: {
-              year: { $year: '$date' },
-              month: { $month: '$date' }
-            },
+            _id: groupId,
             income: {
               $sum: {
                 $cond: [{ 
@@ -175,16 +186,22 @@ class AnalyticsService {
                     { $eq: ['$type', 'expense'] },
                     { $eq: ['$type', 'Expense'] }
                   ]
-                }, '$amount', 0]
+                }, { $abs: '$amount' }, 0]
               }
             }
           }
         },
-        { $sort: { '_id.year': 1, '_id.month': 1 } }
+        { $sort: sortGroup }
       ]);
 
+      const formatTrendLabel = (t) => {
+        if (t._id.day) return `${t._id.year}-${String(t._id.month).padStart(2, '0')}-${String(t._id.day).padStart(2, '0')}`;
+        if (t._id.week) return `${t._id.year} W${String(t._id.week).padStart(2, '0')}`;
+        return `${t._id.year}-${String(t._id.month).padStart(2, '0')}`;
+      };
+
       const formattedTrends = trends.map(t => ({
-        monthYear: `${t._id.year}-${String(t._id.month).padStart(2, '0')}`,
+        monthYear: formatTrendLabel(t),
         totalIncome: parseFloat(t.income.toFixed(2)),
         totalExpenses: parseFloat(t.expenses.toFixed(2)),
         netSavings: parseFloat((t.income - t.expenses).toFixed(2))
@@ -332,6 +349,19 @@ class AnalyticsService {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
+      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      let groupId, sortGroup;
+      if (diffDays <= 35) {
+        groupId = { year: { $year: '$date' }, month: { $month: '$date' }, day: { $dayOfMonth: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.month': 1, '_id.day': 1 };
+      } else if (diffDays <= 95) {
+        groupId = { year: { $isoWeekYear: '$date' }, week: { $isoWeek: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.week': 1 };
+      } else {
+        groupId = { year: { $year: '$date' }, month: { $month: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.month': 1 };
+      }
+
       const trends = await Transaction.aggregate([
         {
           $match: {
@@ -345,18 +375,21 @@ class AnalyticsService {
         },
         {
           $group: {
-            _id: {
-              year: { $year: '$date' },
-              month: { $month: '$date' }
-            },
+            _id: groupId,
             totalIncome: { $sum: '$amount' }
           }
         },
-        { $sort: { '_id.year': 1, '_id.month': 1 } }
+        { $sort: sortGroup }
       ]);
 
+      const formatTrendLabel = (t) => {
+        if (t._id.day) return `${t._id.year}-${String(t._id.month).padStart(2, '0')}-${String(t._id.day).padStart(2, '0')}`;
+        if (t._id.week) return `${t._id.year} W${String(t._id.week).padStart(2, '0')}`;
+        return `${t._id.year}-${String(t._id.month).padStart(2, '0')}`;
+      };
+
       const formattedTrends = trends.map(t => ({
-        monthYear: `${t._id.year}-${String(t._id.month).padStart(2, '0')}`,
+        monthYear: formatTrendLabel(t),
         totalIncome: parseFloat(t.totalIncome.toFixed(2))
       }));
 
@@ -389,6 +422,19 @@ class AnalyticsService {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
+      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      let groupId, sortGroup;
+      if (diffDays <= 35) {
+        groupId = { year: { $year: '$date' }, month: { $month: '$date' }, day: { $dayOfMonth: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.month': 1, '_id.day': 1 };
+      } else if (diffDays <= 95) {
+        groupId = { year: { $isoWeekYear: '$date' }, week: { $isoWeek: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.week': 1 };
+      } else {
+        groupId = { year: { $year: '$date' }, month: { $month: '$date' } };
+        sortGroup = { '_id.year': 1, '_id.month': 1 };
+      }
+
       const trends = await Transaction.aggregate([
         {
           $match: {
@@ -398,10 +444,7 @@ class AnalyticsService {
         },
         {
           $group: {
-            _id: {
-              year: { $year: '$date' },
-              month: { $month: '$date' }
-            },
+            _id: groupId,
             income: { 
               $sum: { 
                 $cond: [{ 
@@ -424,14 +467,20 @@ class AnalyticsService {
             }
           }
         },
-        { $sort: { '_id.year': 1, '_id.month': 1 } }
+        { $sort: sortGroup }
       ]);
+
+      const formatTrendLabel = (t) => {
+        if (t._id.day) return `${t._id.year}-${String(t._id.month).padStart(2, '0')}-${String(t._id.day).padStart(2, '0')}`;
+        if (t._id.week) return `${t._id.year} W${String(t._id.week).padStart(2, '0')}`;
+        return `${t._id.year}-${String(t._id.month).padStart(2, '0')}`;
+      };
 
       const formattedTrends = trends.map(t => {
         const savings = t.income - t.expenses;
         const savingsRate = t.income > 0 ? (savings / t.income) * 100 : 0;
         return {
-          monthYear: `${t._id.year}-${String(t._id.month).padStart(2, '0')}`,
+          monthYear: formatTrendLabel(t),
           savings: parseFloat(savings.toFixed(2)),
           savingsRate: parseFloat(savingsRate.toFixed(2))
         };
