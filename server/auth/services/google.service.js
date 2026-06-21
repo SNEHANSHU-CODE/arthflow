@@ -95,6 +95,11 @@ class GoogleOAuthService {
         throw err;
       }
     } catch (err) {
+      if (err.message && err.message.includes('State already used')) {
+        const error = new Error('STATE_ALREADY_USED');
+        error.statusCode = 400;
+        throw error;
+      }
       const error = new Error(OAUTH_ERRORS.INVALID_STATE);
       error.statusCode = 400;
       throw error;

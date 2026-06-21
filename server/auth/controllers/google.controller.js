@@ -105,6 +105,13 @@ class GoogleOAuthController {
       // ✅ REDIRECT TO FRONTEND CALLBACK
       return res.redirect(`${frontendUrl}/oauth/callback`);
     } catch (error) {
+      // If this is a double-request and the state was already consumed successfully,
+      // just redirect to the frontend callback so the user proceeds normally.
+      if (error.message === 'STATE_ALREADY_USED') {
+        logger.warn('Double request detected for OAuth callback', { requestId });
+        return res.redirect(`${frontendUrl}/oauth/callback`);
+      }
+
       logger.error('Google OAuth callback error', {
         error: error.message,
         stack: error.stack,

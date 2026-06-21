@@ -7,9 +7,8 @@ const bcrypt = require('bcryptjs');
 
 class RegistrationOtpService {
   generateOTP() {
-    const min = Math.pow(10, config.otp.length - 1);
-    const max = Math.pow(10, config.otp.length) - 1;
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    const crypto = require('crypto');
+    return crypto.randomInt(100000, 999999);
   }
 
   getOTPKey(email) {
@@ -44,10 +43,12 @@ class RegistrationOtpService {
       await redisService.set(this.getOTPKey(email), otp.toString(), expiryInSeconds);
 
       // Store registration data temporarily (encrypted password)
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash(password, salt);
       const registrationData = JSON.stringify({
         email: email.toLowerCase(),
         username,
-        password // Will be hashed when creating user
+        password: hashedPassword // Will be hashed when creating user
       });
       await redisService.set(
         this.getRegistrationDataKey(email),

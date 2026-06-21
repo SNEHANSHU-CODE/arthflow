@@ -185,10 +185,8 @@ export default function VaultItems({ onSelect }) {
         if (typeof data === 'object' && data.data) data = data.data;
       }
       if (!data) throw new Error('No data');
-      const binary = atob(data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const blob = new Blob([bytes], { type: doc.mimeType || 'application/octet-stream' });
+      const base64Data = data.includes(',') ? data.split(',')[1] : data;
+      const blob = await (await fetch(`data:${doc.mimeType || 'application/octet-stream'};base64,${base64Data}`)).blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

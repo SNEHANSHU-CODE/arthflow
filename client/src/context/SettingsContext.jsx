@@ -114,7 +114,9 @@ const SettingsProvider = ({ children }) => {
   useEffect(() => {
     const active = applyThemeToDOM(preferences.theme);
     setResolvedTheme(active);
+  }, [preferences.theme, version]);
 
+  useEffect(() => {
     if (preferences.theme === 'auto') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handler = (e) => {
@@ -124,7 +126,7 @@ const SettingsProvider = ({ children }) => {
       mediaQuery.addEventListener('change', handler);
       return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, [preferences.theme, version]);
+  }, [preferences.theme]);
 
   const updatePreference = useCallback((key, value) => {
     setPreferences(prev => {

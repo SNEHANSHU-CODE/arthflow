@@ -27,15 +27,14 @@ const OAUTH_ERROR_MESSAGES = {
 export const initiateGoogleOAuth = createAsyncThunk(
   'auth/googleOAuthStart',
   async (_, { rejectWithValue }) => {
-    const timeoutId = setTimeout(() => {
-      throw new Error('OAuth initialization timeout');
-    }, 30000); // 30 second timeout
-
     try {
       const apiUrl = import.meta.env.VITE_API_URL;
       if (!apiUrl) {
         throw new Error('API URL not configured');
       }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       const response = await fetch(
         `${apiUrl}/auth/google/start`,
@@ -44,7 +43,8 @@ export const initiateGoogleOAuth = createAsyncThunk(
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          signal: controller.signal
         }
       );
 
@@ -69,7 +69,9 @@ export const initiateGoogleOAuth = createAsyncThunk(
       console.info('OAuth URL generated successfully');
       return { authUrl, state };
     } catch (error) {
-      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        error.message = 'OAuth initialization timeout';
+      }
       const errorMessage = error.message || 'Unknown error';
       console.error('OAuth initiation error:', errorMessage);
 

@@ -22,10 +22,12 @@ class LLMProvider:
         self._gemini_model: Optional[BaseLLM] = None
     
     async def initialize_models(self) -> None:
-        """Initialize all LLM models"""
+        """Initialize all LLM models to ensure they are downloaded and ready"""
         try:
             logger.info("Initializing LLM models...")
-            # Models will be initialized on demand
+            # Enforce strict initialization instead of on-demand
+            await self.get_groq_llm()
+            await self.get_gemini_llm()
             logger.info("✅ LLM initialization complete")
         except Exception as e:
             logger.error(f"❌ Failed to initialize LLM models: {e}")

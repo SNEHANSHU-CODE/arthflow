@@ -9,6 +9,7 @@ export default function NotificationBell() {
   const dispatch = useDispatch();
   const { unreadCount, panelOpen } = useSelector(state => state.notifications);
   const bellRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   // Load all notifications on mount (full list for history + badge count)
   useEffect(() => {
@@ -59,9 +60,18 @@ export default function NotificationBell() {
     const opening = !panelOpen;
     dispatch(setPanelOpen(opening));
     if (opening && unreadCount > 0) {
-      setTimeout(() => dispatch(markAllRead()), 1500);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => dispatch(markAllRead()), 1500);
+    } else {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const hasUnread = unreadCount > 0;
 

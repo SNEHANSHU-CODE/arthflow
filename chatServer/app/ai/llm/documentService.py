@@ -95,12 +95,13 @@ class DocumentService:
 
             if mime_type == MIME_PDF:
                 pages = cls._extract_pdf(raw_bytes, original_name, password=password)
+                chunks = cls._chunk_pages(pages, original_name)
             elif mime_type == MIME_CSV:
                 pages = cls._extract_csv(raw_bytes, original_name)
+                chunks = cls._tabular_to_chunks(pages, original_name)
             elif mime_type == MIME_XLSX:
                 pages = cls._extract_xlsx(raw_bytes, original_name)
-
-            chunks = cls._chunk_pages(pages, original_name)
+                chunks = cls._tabular_to_chunks(pages, original_name)
             logger.info(
                 "Processed '%s' (%s) → %d sections → %d chunks",
                 original_name, mime_type, len(pages), len(chunks),
@@ -305,6 +306,49 @@ class DocumentService:
     # ------------------------------------------------------------------
     # Chunker — shared by all formats
     # ------------------------------------------------------------------
+
+    @classmethod
+    def _tabular_to_chunks(cls, pages: List[dict], source: str) -> List[TextChunk]:
+        """
+        Keeps the entire tabular document as a single large chunk, 
+        and also creates smaller line-by-line chunks for exact row context.
+        """
+        chunks: List[TextChunk] = []
+        chunk_index = 0
+
+        for page in pages:
+            masked_text, findings = PIIMasker.mask_with_report(page["text"])
+            if findings:
+                logger.info(
+                    "🔒 PII masked in tabular '%s' page %s — %s",
+                    source,
+                    page.get("page_number", "N/A"),
+                    ", ".join(f"{f.pii_type}×{f.count}" for f in findings),
+                )
+            
+            # 1. Add the entire table as one massive chunk
+            chunks.append(TextChunk(
+                text=masked_text,
+                chunk_index=chunk_index,
+                page_number=page.get("page_number"),
+                source=source,
+            ))
+            chunk_index += 1
+            
+            # 2. Add row-level chunks (split by newline since CSV/XLSX uses \n for rows)
+            lines = masked_text.split('\n')
+            for line in lines:
+                if not line.strip() or line.startswith('[Sheet:'):
+                    continue
+                chunks.append(TextChunk(
+                    text=line.strip(),
+                    chunk_index=chunk_index,
+                    page_number=page.get("page_number"),
+                    source=source,
+                ))
+                chunk_index += 1
+
+        return chunks
 
     @classmethod
     def _chunk_pages(cls, pages: List[dict], source: str) -> List[TextChunk]:

@@ -21,7 +21,6 @@ from app.services.embeddingService import embedding_storage
 from app.ai.llm.documentService import DocumentService
 from app.ai.llm.embeddingService import EmbeddingService
 from app.models.embeddingModel import EmbeddingInsert
-from app.utils.piiMasker import PIIMasker
 
 logger = logging.getLogger(__name__)
 
@@ -106,11 +105,8 @@ class RAGPipeline:
                 logger.error("Extraction failed (retryable): %s", e)
                 return False
 
-            # Mask PII in all chunks before embedding and storing
-            chunk_texts = PIIMasker.mask_chunks([chunk.text for chunk in chunks])
-            # Also update chunk objects so stored text matches embedded text
-            for chunk, masked_text in zip(chunks, chunk_texts):
-                chunk.text = masked_text
+            # Extract chunk texts before embedding and storing
+            chunk_texts = [chunk.text for chunk in chunks]
             try:
                 embeddings = await EmbeddingService.embed_chunks(chunk_texts)
                 if len(embeddings) != len(chunks):

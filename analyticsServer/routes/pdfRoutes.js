@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { authenticateGraphQL } = require('../middleware/auth');
 const AnalyticsService = require('../services/analyticsService');
 const PdfReportService = require('../services/pdfReportService');
@@ -17,6 +18,7 @@ const User = require('../models/User');
  * }
  */
 router.post('/generate-report', async (req, res) => {
+  let tempFilePath = null;
   try {
     // Authenticate user from Authorization header
     const authData = authenticateGraphQL(req);
@@ -76,13 +78,14 @@ router.post('/generate-report', async (req, res) => {
 
     const dateRange = { startDate, endDate };
     const fileName = `Financial_Report_${startDate}_to_${endDate}_${Date.now()}.pdf`;
+    tempFilePath = path.join(os.tmpdir(), fileName);
 
     // Generate PDF
     const pdfResult = await PdfReportService.generateFinancialReport(
       analyticsData,
       dateRange,
       { name: userName, email: user?.email || userEmail },
-      fileName,
+      tempFilePath,
       currencySymbol || '₹'
     );
 
@@ -120,6 +123,7 @@ router.post('/generate-report', async (req, res) => {
 
   } catch (error) {
     console.error('Error generating report:', error);
+    if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
     res.status(500).json({
       success: false,
       message: `Failed to generate report: ${error.message}`

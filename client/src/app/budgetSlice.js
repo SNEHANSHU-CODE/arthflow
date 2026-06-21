@@ -16,7 +16,7 @@ export const fetchBudgetAnalysis = createAsyncThunk(
   'budget/fetchBudgetAnalysis',
   async ({ year, month }, { rejectWithValue }) => {
     try {
-      return await budgetService.getBudgetAnalysis(year, month);
+      return await budgetService.getBudgetAnalysis(month, year);
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }

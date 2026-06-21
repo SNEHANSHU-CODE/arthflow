@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const { ApolloServer } = require('@apollo/server');
 const { expressMiddleware } = require('@apollo/server/express4');
+const { GraphQLError } = require('graphql');
 
 // Load environment variables
 dotenv.config();
@@ -48,7 +49,7 @@ async function startServer() {
       status: 'ok', 
       service: 'analytics-server',
       timestamp: new Date().toISOString(),
-      database: 'connected'
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
     });
   });
 
@@ -93,12 +94,11 @@ monthlyReportCron.start();
             req
           };
         } catch (error) {
-          // Fallback to anonymous user for public/introspection queries
-          return {
-            user: null,
-            token: null,
-            req
-          };
+          throw new GraphQLError('Authentication failed', {
+            extensions: {
+              code: 'UNAUTHENTICATED',
+            },
+          });
         }
       },
     }),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaEdit, FaSave, FaTimes, FaUser, FaEnvelope, FaTrash, FaKey, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -227,6 +227,17 @@ const ProfilePage = () => {
     setDeleteConfirm({ password: "", confirmDeletion: "" });
     setDeleteErrors({});
   };
+
+  // Handle Escape key for modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showDeleteModal) {
+        closeDeleteModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDeleteModal]);
 
   return (
     <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
@@ -498,7 +509,7 @@ const ProfilePage = () => {
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show" tabIndex="-1" role="dialog" aria-modal="true" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-0">

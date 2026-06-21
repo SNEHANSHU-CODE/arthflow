@@ -3,6 +3,9 @@ const { encryptPassword } = require('../utils/cryptoUtils');
 
 class VaultService {
   async uploadDocument(userId, { name, originalName, mimeType, size, data, tags, description }) {
+    const count = await Vault.countDocuments({ userId });
+    if (count >= 50) throw new Error('Upload limit reached (50 documents per user)');
+
     const doc = new Vault({ userId, name, originalName, mimeType, size, data, tags, description });
     await doc.save();
     return { success: true, data: this._sanitize(doc) };

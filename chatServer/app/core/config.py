@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     EMBEDDING_DIMENSIONS: int = 3072
 
-    CHUNK_SIZE: int = 500
-    CHUNK_OVERLAP: int = 50
+    CHUNK_SIZE: int = 600
+    CHUNK_OVERLAP: int = 100
     CRON_INTERVAL_SECONDS: int = 30
 
     NOTIFICATION_POLL_SECONDS: int = 5

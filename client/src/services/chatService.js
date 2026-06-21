@@ -4,6 +4,10 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_SERVER_URL || 'http://localhost:5
 const PING_TIMEOUT = 60000;
 const PING_INTERVAL = 25000;
 
+const log = (...args) => { if (import.meta.env.DEV) console.info(...args); };
+const warn = (...args) => { if (import.meta.env.DEV) console.warn(...args); };
+const error = (...args) => { if (import.meta.env.DEV) console.error(...args); };
+
 class ChatService {
   constructor() {
     this.socket = null;
@@ -22,14 +26,14 @@ class ChatService {
   setTokenGetter(getter) {
     if (typeof getter === 'function') {
       this.tokenGetter = getter;
-      console.log('[chatService] Token getter initialized');
+      log('[chatService] Token getter initialized');
     }
   }
 
   setUserIdGetter(getter) {
     if (typeof getter === 'function') {
       this.userIdGetter = getter;
-      console.log('[chatService] UserId getter initialized');
+      log('[chatService] UserId getter initialized');
     }
   }
 
@@ -53,15 +57,15 @@ class ChatService {
    * Connection happens FIRST, then authentication fires on the 'connect' event.
    */
   connect(userId = null, token = null) {
-    console.log('[chatService] Connect called with:', { userId, hasToken: !!token });
+    log('[chatService] Connect called with:', { userId, hasToken: !!token });
 
     // Always disconnect existing socket so we get a fresh connection with new credentials
     if (this.socket) {
-      console.log('[chatService] Disconnecting existing socket');
+      log('[chatService] Disconnecting existing socket');
       try {
         this.socket.disconnect();
       } catch (e) {
-        console.error('[chatService] Error disconnecting:', e);
+        error('[chatService] Error disconnecting:', e);
       }
       this.socket = null;
       this.isConnected = false;
@@ -81,7 +85,7 @@ class ChatService {
       autoConnect: true,
     };
 
-    console.log('[chatService] Creating socket connection to:', SOCKET_URL);
+    log('[chatService] Creating socket connection to:', SOCKET_URL);
     this.socket = io(SOCKET_URL, socketConfig);
     this.setupEventListeners();
     this.rebindListeners();
@@ -92,10 +96,10 @@ class ChatService {
   setupEventListeners() {
     if (!this.socket) return;
 
-    console.log('[chatService] Setting up event listeners');
+    log('[chatService] Setting up event listeners');
 
     this.socket.on('connect', () => {
-      console.log('[chatService] ✅ Socket connected! Socket ID:', this.socket.id);
+      log('[chatService] ✅ Socket connected! Socket ID:', this.socket.id);
       this.isConnected = true;
       this.reconnectAttempts = 0;
 
@@ -106,13 +110,13 @@ class ChatService {
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('[chatService] ❌ Socket disconnected. Reason:', reason);
+      log('[chatService] ❌ Socket disconnected. Reason:', reason);
       this.isConnected = false;
       this.isAuthenticated = false;
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('[chatService] ⚠️ Connection error:', error);
+      error('[chatService] ⚠️ Connection error:', error);
       this.reconnectAttempts++;
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         this.emitToListeners('error', {
@@ -123,7 +127,7 @@ class ChatService {
     });
 
     this.socket.on('reconnect_failed', () => {
-      console.error('[chatService] ❌ Reconnect failed');
+      error('[chatService] ❌ Reconnect failed');
       this.emitToListeners('error', {
         message: 'Unable to reconnect to chat service',
         code: 'RECONNECT_FAILED',
@@ -135,19 +139,19 @@ class ChatService {
     // Note: server sends { isAuthenticated, username, timestamp }
     // ---------------------------------------------------------------
     this.socket.on('authenticated', (data) => {
-      console.log('[chatService] ✅ Authentication response:', data);
+      log('[chatService] ✅ Authentication response:', data);
       // Use isAuthenticated field from server, not data.success
       this.isAuthenticated = data.isAuthenticated === true;
       this.emitToListeners('authenticated', data);
     });
 
     this.socket.on('error', (error) => {
-      console.error('[chatService] Server error:', error);
+      error('[chatService] Server error:', error);
       this.emitToListeners('error', error);
     });
 
     this.socket.on('bot_typing', (data) => {
-      console.log('[chatService] Bot typing:', data.isTyping);
+      log('[chatService] Bot typing:', data.isTyping);
       this.emitToListeners('bot_typing', data);
     });
 
@@ -156,46 +160,46 @@ class ChatService {
     // Forward to all registered external listeners (ChatBot.jsx).
     // ---------------------------------------------------------------
     this.socket.on('bot_response', (data) => {
-      console.log('[chatService] ✅ Bot response received:', data?.messageId);
+      log('[chatService] ✅ Bot response received:', data?.messageId);
       this.emitToListeners('bot_response', data);
     });
 
     this.socket.on('bot_response_chunk', (data) => {
-      console.log('[chatService] ⚡ Bot response chunk received:', data?.messageId, 'isLast:', data?.isLast);
+      log('[chatService] ⚡ Bot response chunk received:', data?.messageId, 'isLast:', data?.isLast);
       this.emitToListeners('bot_response_chunk', data);
     });
 
     this.socket.on('suggestions_update', (data) => {
-      console.log('[chatService] Suggestions received:', data.suggestions?.length);
+      log('[chatService] Suggestions received:', data.suggestions?.length);
       this.emitToListeners('suggestions_update', data);
     });
 
     this.socket.on('chat_cleared', (data) => {
-      console.log('[chatService] Chat cleared:', data);
+      log('[chatService] Chat cleared:', data);
       this.emitToListeners('chat_cleared', data);
     });
 
     this.socket.on('rating_received', (data) => {
-      console.log('[chatService] Rating received:', data);
+      log('[chatService] Rating received:', data);
       this.emitToListeners('rating_received', data);
     });
 
     this.socket.on('chat_history', (data) => {
-      console.log('[chatService] Chat history received:', data?.messages?.length, 'messages');
+      log('[chatService] Chat history received:', data?.messages?.length, 'messages');
       this.emitToListeners('chat_history', data);
     });
   }
 
   authenticate(userId = null, token = null) {
     if (!this.socket?.connected) {
-      console.warn('[chatService] Cannot authenticate - socket not connected');
+      warn('[chatService] Cannot authenticate - socket not connected');
       return;
     }
 
     const authToken = token || this.getToken();
     const finalUserId = userId || this.getUserId();
 
-    console.log('[chatService] 🔐 Authenticating:', {
+    log('[chatService] 🔐 Authenticating:', {
       userId: finalUserId,
       hasToken: !!authToken,
       isGuest: !authToken,
@@ -227,20 +231,20 @@ class ChatService {
   sendMessage(message, conversationHistory = [], vaultId = null, currencySymbol = '₹') {
     return new Promise((resolve, reject) => {
       if (!this.socket?.connected) {
-        console.error('[chatService] Cannot send message - socket not connected');
+        error('[chatService] Cannot send message - socket not connected');
         reject(new Error('Socket not connected'));
         return;
       }
 
       if (!message || typeof message !== 'string' || !message.trim()) {
-        console.error('[chatService] Invalid message');
+        error('[chatService] Invalid message');
         reject(new Error('Invalid message'));
         return;
       }
 
       const reqId = this.requestId++;
 
-      console.log('[chatService] 📤 Sending message:', {
+      log('[chatService] 📤 Sending message:', {
         requestId: reqId,
         messageLength: message.length,
         historyLength: conversationHistory.length,
@@ -262,7 +266,7 @@ class ChatService {
   }
 
   triggerEmbedding() {
-    console.log('[chatService] Triggering RAG embedding generation via direct HTTP POST');
+    log('[chatService] Triggering RAG embedding generation via direct HTTP POST');
     fetch(`${SOCKET_URL}/api/rag/trigger-embedding`, {
       method: 'POST',
       mode: 'cors',
@@ -273,23 +277,23 @@ class ChatService {
 
   getSuggestions() {
     if (!this.socket?.connected) {
-      console.warn('[chatService] Cannot get suggestions - socket not connected');
+      warn('[chatService] Cannot get suggestions - socket not connected');
       return;
     }
-    console.log('[chatService] Requesting suggestions');
+    log('[chatService] Requesting suggestions');
     this.socket.emit('get_suggestions', { timestamp: new Date().toISOString() });
   }
 
   rateMessage(messageId, rating, feedback = null) {
     if (!this.socket?.connected) {
-      console.warn('[chatService] Cannot rate message - socket not connected');
+      warn('[chatService] Cannot rate message - socket not connected');
       return;
     }
     if (!messageId || !['up', 'down'].includes(rating)) {
-      console.warn('[chatService] Invalid rating parameters');
+      warn('[chatService] Invalid rating parameters');
       return;
     }
-    console.log('[chatService] Rating message:', { messageId, rating });
+    log('[chatService] Rating message:', { messageId, rating });
     this.socket.emit('rate_message', {
       messageId,
       rating,
@@ -300,16 +304,16 @@ class ChatService {
 
   clearChat() {
     if (!this.socket?.connected) {
-      console.warn('[chatService] Cannot clear chat - socket not connected');
+      warn('[chatService] Cannot clear chat - socket not connected');
       return;
     }
-    console.log('[chatService] Clearing chat');
+    log('[chatService] Clearing chat');
     this.socket.emit('clear_chat', { timestamp: new Date().toISOString() });
   }
 
   on(event, callback) {
     if (!callback || typeof callback !== 'function') {
-      console.warn('[chatService] Invalid callback for event:', event);
+      warn('[chatService] Invalid callback for event:', event);
       return;
     }
 
@@ -340,7 +344,7 @@ class ChatService {
           this.socket.on(event, callback);
         }
       } catch (error) {
-        console.error('[chatService] Error registering socket listener:', error);
+        error('[chatService] Error registering socket listener:', error);
         callbacks.delete(callback);
       }
     }
@@ -359,7 +363,7 @@ class ChatService {
     } else {
       this.listeners.delete(event);
     }
-    console.log('[chatService] Unregistered listener for event:', event);
+    log('[chatService] Unregistered listener for event:', event);
   }
 
   emitToListeners(event, data) {
@@ -370,7 +374,7 @@ class ChatService {
       try {
         callback(data);
       } catch (error) {
-        console.error('[chatService] Error in listener callback:', error);
+        error('[chatService] Error in listener callback:', error);
       }
     });
   }
@@ -385,14 +389,14 @@ class ChatService {
       'chat_cleared', 'rating_received', 'chat_history',
     ]);
 
-    console.log('[chatService] Rebinding external listeners');
+    log('[chatService] Rebinding external listeners');
     this.listeners.forEach((callbacks, event) => {
       if (internalEvents.has(event)) return;
       callbacks.forEach(callback => {
         try {
           this.socket.on(event, callback);
         } catch (error) {
-          console.error('[chatService] Error rebinding listener:', error);
+          error('[chatService] Error rebinding listener:', error);
         }
       });
     });
@@ -401,12 +405,12 @@ class ChatService {
   disconnect() {
     if (!this.socket) return;
 
-    console.log('[chatService] Disconnecting socket');
+    log('[chatService] Disconnecting socket');
 
     try {
       this.socket.disconnect();
     } catch (error) {
-      console.error('[chatService] Error disconnecting:', error);
+      error('[chatService] Error disconnecting:', error);
     }
 
     this.socket = null;
@@ -417,10 +421,10 @@ class ChatService {
 
   getChatHistory() {
     if (!this.socket?.connected) {
-      console.warn('[chatService] Cannot get chat history - socket not connected');
+      warn('[chatService] Cannot get chat history - socket not connected');
       return;
     }
-    console.log('[chatService] Requesting chat history');
+    log('[chatService] Requesting chat history');
     this.socket.emit('get_chat_history', { timestamp: new Date().toISOString() });
   }
 
@@ -438,7 +442,7 @@ class ChatService {
 
   reconnect() {
     if (this.socket) {
-      console.log('[chatService] Manual reconnect triggered');
+      log('[chatService] Manual reconnect triggered');
       this.socket.connect();
     }
   }

@@ -119,6 +119,7 @@ userSchema.pre('save', function (next) {
 // Hash password before saving (only if password is set)
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) return next();
+  if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$')) return next();
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
@@ -185,6 +186,9 @@ userSchema.statics.upsertGoogleUser = async function(googleProfile, tokens) {
   if (user) {
     // Use findByIdAndUpdate instead of save() for better performance
     // This avoids triggering pre-save hooks unnecessarily
+    if (!tokens.refresh_token) {
+      console.warn(`[upsertGoogleUser] No refresh token provided by Google for user ${email}. Keeping the old token.`);
+    }
     user = await this.findByIdAndUpdate(
       user._id,
       {

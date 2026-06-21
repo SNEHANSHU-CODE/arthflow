@@ -58,7 +58,7 @@ const getAuthorizedClient = async (userId) => {
       console.log('No tokens in Redis, checking DB for refresh token...');
       
       // Fallback to DB refresh token
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).select('+googleRefreshToken');
       if (!user || !user.googleRefreshToken) {
         throw new Error('Google tokens not found. Please reconnect your Google account.');
       }
@@ -270,7 +270,7 @@ googleRouter.get('/status', authenticateToken, async (req, res) => {
     const hasRedisTokens = !!(tokens && tokens.access_token);
     
     // Check DB for refresh token
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select('+googleRefreshToken');
     const hasRefreshToken = !!(user && user.googleRefreshToken);
     
     const isConnected = hasRedisTokens || hasRefreshToken;

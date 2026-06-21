@@ -164,6 +164,7 @@ const initialState = {
   isTyping: false,
   error: null,
   connected: false,
+  connecting: false,
   lastMessageId: null,
   sessionStats: {
     messagesCount: 0,
@@ -327,7 +328,7 @@ const chatSlice = createSlice({
       // Load history from DB — convert DB format to UI message format
       const dbMessages = Array.isArray(action.payload) ? action.payload : [];
       state.messages = dbMessages.map((m, idx) => ({
-        id: `history-${idx}-${m.timestamp || Date.now()}`,
+        id: m._id || `history-${idx}-${Date.now()}`,
         type: m.role === 'human' ? 'user' : 'bot',
         message: m.content,
         timestamp: m.timestamp || new Date().toISOString(),
@@ -348,14 +349,17 @@ const chatSlice = createSlice({
       .addCase(connectSocket.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.connecting = true;
       })
       .addCase(connectSocket.fulfilled, (state) => {
         state.connected = true;
+        state.connecting = false;
         state.loading = false;
         state.error = null;
       })
       .addCase(connectSocket.rejected, (state, action) => {
         state.connected = false;
+        state.connecting = false;
         state.loading = false;
         state.error = action.payload || 'Failed to connect';
       })

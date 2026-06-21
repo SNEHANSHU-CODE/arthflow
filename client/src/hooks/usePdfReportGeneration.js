@@ -26,14 +26,7 @@ export const usePdfReportGeneration = () => {
   
   // GraphQL Mutation
   const [generateReportGraphQL, { loading: graphQLLoading, error: graphQLError }] = useMutation(
-    GENERATE_FINANCIAL_REPORT,
-    {
-      context: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    }
+    GENERATE_FINANCIAL_REPORT
   );
 
   /**
@@ -43,13 +36,16 @@ export const usePdfReportGeneration = () => {
   const generateReportViaGraphQL = useCallback(
     async (startDate, endDate, currencySymbol = '₹') => {
       try {
-        console.log('📊 Generating PDF report via GraphQL...');
         const { data } = await generateReportGraphQL({
-          variables: { startDate, endDate, currencySymbol }
+          variables: { startDate, endDate, currencySymbol },
+          context: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
         });
 
         if (data?.generateFinancialReport?.success) {
-          console.log('✅ PDF generated successfully:', data.generateFinancialReport.fileName);
           return {
             success: true,
             message: data.generateFinancialReport.message,
@@ -60,11 +56,10 @@ export const usePdfReportGeneration = () => {
           throw new Error(data?.generateFinancialReport?.message || 'Failed to generate report');
         }
       } catch (error) {
-        console.error('❌ GraphQL Error:', error);
         throw error;
       }
     },
-    [generateReportGraphQL]
+    [generateReportGraphQL, accessToken]
   );
 
   /**
@@ -77,8 +72,6 @@ export const usePdfReportGeneration = () => {
   const generateReportViaREST = useCallback(
     async (startDate, endDate) => {
       try {
-        console.log('📊 Generating PDF report via REST API...');
-        
         // Use API Gateway endpoint
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -122,14 +115,12 @@ export const usePdfReportGeneration = () => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(link);
 
-        console.log('✅ PDF downloaded successfully:', fileName);
         return {
           success: true,
           message: 'Report downloaded successfully',
           fileName: fileName
         };
       } catch (error) {
-        console.error('❌ REST API Error:', error);
         throw error;
       }
     },

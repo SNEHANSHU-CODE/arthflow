@@ -23,13 +23,7 @@ const store = configureStore({
         vault: vaultReducer,
         budget: budgetReducer,
         notifications: notificationReducer,
-    },
-    middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({
-            serializableCheck: {
-                ignoredActions: ['persist/PERSIST'],
-            },
-        }),
+    }
 });
 
 const tokenGetter = () => store.getState().auth.accessToken;

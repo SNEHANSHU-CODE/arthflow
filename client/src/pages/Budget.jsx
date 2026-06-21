@@ -7,6 +7,7 @@ import {
 import { fetchBudget, createBudget, updateBudget } from '../app/budgetSlice';
 import { fetchTransactions } from '../app/transactionSlice';
 import { useSettings } from '../hooks/useSettings';
+import transactionService from '../services/transactionService';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -126,25 +127,19 @@ function BudgetChart({ chartData }) {
     );
   };
 
-  // FIX: Recharts <Legend> always uses the static <Bar fill> colour and ignores <Cell> overrides,
-  // so the legend showed the wrong colour for "Spent". Replaced with a custom legend that
-  // correctly shows green (within budget) and red (over budget) with a note.
-  const CustomLegend = () => (
-    <div className="d-flex justify-content-center gap-4 mt-2" style={{ fontSize: 13 }}>
-      <span className="d-flex align-items-center gap-1">
-        <span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#6366f1' }} />
-        Budget
-      </span>
-      <span className="d-flex align-items-center gap-1">
-        <span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#22c55e' }} />
-        Spent (within budget)
-      </span>
-      <span className="d-flex align-items-center gap-1">
-        <span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#ef4444' }} />
-        Spent (over budget)
-      </span>
-    </div>
-  );
+  const CustomLegend = ({ payload }) => {
+    if (!payload) return null;
+    return (
+      <div className="d-flex justify-content-center gap-4 mt-2" style={{ fontSize: 13 }}>
+        {payload.map((entry, index) => (
+          <span key={`item-${index}`} className="d-flex align-items-center gap-1">
+            <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 2, background: entry.color }} />
+            {entry.value}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="card border-0 shadow-sm">
@@ -347,19 +342,34 @@ export default function Budget() {
   const [showForm, setShowForm] = useState(false);
 
   const { budget, loading: budgetLoading } = useSelector(s => s.budget);
-  const { transactions = [], loading: txLoading } = useSelector(s => s.transaction);
+  const userId = useSelector(s => s.auth.user?.userId);
+  const [budgetTransactions, setBudgetTransactions] = useState([]);
+  const [txLoading, setTxLoading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchBudget({ month, year }));
-    const startDate = new Date(year, month - 1, 1).toISOString().split("T")[0];
-    const endDate   = new Date(year, month, 0).toISOString().split("T")[0];
-    dispatch(fetchTransactions({ startDate, endDate, limit: 1000 }));
-  }, [dispatch, month, year]);
+    
+    if (!userId) return;
+    const fetchTx = async () => {
+      setTxLoading(true);
+      try {
+        const startDate = new Date(year, month - 1, 1).toISOString().split("T")[0];
+        const endDate   = new Date(year, month, 0).toISOString().split("T")[0];
+        const response = await transactionService.getTransactions({ startDate, endDate, limit: 1000, userId });
+        setBudgetTransactions(response.data?.transactions || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setTxLoading(false);
+      }
+    };
+    fetchTx();
+  }, [dispatch, month, year, userId]);
 
   // Transactions are source of truth — always computed dynamically
   const spendMap = useMemo(
-    () => computeSpend(transactions, month, year),
-    [transactions, month, year]
+    () => computeSpend(budgetTransactions, month, year),
+    [budgetTransactions, month, year]
   );
 
   const totalBudget = budget?.totalBudget || 0;

@@ -36,7 +36,10 @@ export const currencyLocales = {
  * @returns {string} Formatted currency string
  */
 export const formatCurrency = (amount, currency = 'INR', showSymbol = true) => {
-  if (amount === null || amount === undefined) return '₹0';
+  if (amount === null || amount === undefined) {
+    const symbol = currencySymbols[currency] || '₹';
+    return showSymbol ? `${symbol}0` : '0';
+  }
   
   const locale = currencyLocales[currency] || 'en-IN';
   const symbol = currencySymbols[currency] || '₹';

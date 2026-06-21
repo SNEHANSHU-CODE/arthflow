@@ -77,10 +77,8 @@ class GoalService {
 
   // Delete goal
   async deleteGoal(goalId, userId) {
-    console.log('goalService deleteGoal:', goalId, userId);
     try {
       const result = await Goal.findOneAndDelete({ _id: goalId, userId });
-      console.log('goalService result', result);
       return result;
     } catch (error) {
       throw new Error(`Failed to delete goal: ${error.message}`);

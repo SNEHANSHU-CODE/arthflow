@@ -127,8 +127,10 @@ function SpreadsheetViewer({ document }) {
         const isCsv = document.mimeType === 'text/csv';
 
         if (isCsv) {
-          // Decode base64 → text
-          const text = atob(stripBase64Prefix(document.data));
+          // Decode base64 → text asynchronously and safely for UTF-8
+          const base64Data = stripBase64Prefix(document.data);
+          const blob = await (await fetch(`data:application/octet-stream;base64,${base64Data}`)).blob();
+          const text = await blob.text();
           const rows = text.split(/\r?\n/).filter(r => r.trim()).map(r =>
             // Simple CSV split — handles quoted fields
             r.match(/(".*?"|[^",\r\n]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g)?.map(v =>
@@ -139,10 +141,10 @@ function SpreadsheetViewer({ document }) {
           setActiveSheet(document.name);
         } else {
           // Excel — use SheetJS (static import)
-          const binary = atob(stripBase64Prefix(document.data));
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          const workbook = XLSX.read(bytes, { type: 'array' });
+          const base64Data = stripBase64Prefix(document.data);
+          const blob = await (await fetch(`data:application/octet-stream;base64,${base64Data}`)).blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
           const result = {};
           workbook.SheetNames.forEach(name => {
             result[name] = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '' });
@@ -252,13 +254,12 @@ export default function VaultViewer({ document, isLoading, onBack }) {
   const pdfSrc = useMemo(() => {
     if (!document?.data || isSpreadsheet) return null;
     try {
-      const binary = atob(stripBase64Prefix(document.data));
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const base64Data = stripBase64Prefix(document.data);
+      const dataUri = `data:application/pdf;base64,${base64Data}`;
       // Pass password to pdfjs if we have one
       return activePassword
-        ? { data: bytes, password: activePassword }
-        : { data: bytes };
+        ? { url: dataUri, password: activePassword }
+        : { url: dataUri };
     } catch (e) {
       return null;
     }
@@ -316,12 +317,10 @@ export default function VaultViewer({ document, isLoading, onBack }) {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!document?.data) return;
-    const binary = atob(stripBase64Prefix(document.data));
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: document.mimeType || 'application/octet-stream' });
+    const base64Data = stripBase64Prefix(document.data);
+    const blob = await (await fetch(`data:${document.mimeType || 'application/octet-stream'};base64,${base64Data}`)).blob();
     const url = URL.createObjectURL(blob);
     const a = window.document.createElement('a');
     a.href = url;

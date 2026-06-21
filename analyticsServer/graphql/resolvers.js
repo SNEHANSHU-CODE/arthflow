@@ -2,7 +2,13 @@ const AnalyticsService = require('../services/analyticsService');
 const PdfReportService = require('../services/pdfReportService');
 const { GraphQLError } = require('graphql');
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const User = require('../models/User');
+const Transaction = require('../models/Transaction');
+const Goal = require('../models/Goal');
+const Budget = require('../models/Budget');
+const ReportComputationService = require('../services/reportComputationService');
 
 /**
  * Error Handler for GraphQL Resolvers
@@ -174,60 +180,78 @@ const resolvers = {
 
         console.log(`📄 Generating report for user ${context.user.id} from ${startDate} to ${endDate}`);
 
-        // Fetch all analytics data for the report (batch query - avoids N+1)
-        const [
-          dashboard,
-          spendingTrends,
-          categoryAnalysis,
-          goalsProgress,
-          incomeTrends,
-          savingsTrends,
-          transactionInsights,
-          budgetPerformance,
-          currentMonthAnalytics
-        ] = await Promise.all([
-          AnalyticsService.getDashboardData(context.user.id, startDate, endDate),
-          AnalyticsService.getSpendingTrends(context.user.id, startDate, endDate),
-          AnalyticsService.getCategoryAnalysis(context.user.id, startDate, endDate),
-          AnalyticsService.getGoalsProgress(context.user.id),
-          AnalyticsService.getIncomeTrends(context.user.id, startDate, endDate),
-          AnalyticsService.getSavingsTrends(context.user.id, startDate, endDate),
-          AnalyticsService.getTransactionInsights(context.user.id, startDate, endDate),
-          AnalyticsService.getBudgetPerformance(context.user.id, startDate, endDate),
-          AnalyticsService.getCurrentMonthAnalytics(context.user.id)
-        ]).catch(error => {
-          throw new GraphQLError('Failed to fetch analytics data for report', {
-            extensions: { code: 'DATA_FETCH_ERROR', originalError: error.message }
-          });
-        });
+        // Convert strings to safe Dates
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
 
-        const analyticsData = {
-          dashboard,
-          spendingTrends,
-          categoryAnalysis,
-          goalsProgress,
-          incomeTrends,
-          savingsTrends,
-          transactionInsights,
-          budgetPerformance,
-          currentMonthAnalytics
-        };
+        // Compute months for budget query
+        const startMonth = start.getMonth() + 1;
+        const startYear  = start.getFullYear();
+        const endMonth   = end.getMonth() + 1;
+        const endYear    = end.getFullYear();
+        const monthYearConditions = [];
+        let y = startYear, m = startMonth;
+        while (y < endYear || (y === endYear && m <= endMonth)) {
+          monthYearConditions.push({ month: m, year: y });
+          m++;
+          if (m > 12) { m = 1; y++; }
+        }
+
+        const now = new Date();
+        const curStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const minStart = start < curStart ? start : curStart;
+        const maxEnd = end > curEnd ? end : curEnd;
+
+        // Fetch all raw data once
+        const [transactions, goals, budgetDocs] = await Promise.all([
+          Transaction.find({
+            userId: context.user.id,
+            date: { $gte: minStart, $lte: maxEnd }
+          }).lean(),
+          Goal.find({ userId: context.user.id }).lean(),
+          monthYearConditions.length > 0 ? Budget.find({
+            userId: context.user.id,
+            $or: monthYearConditions
+          }).lean() : Promise.resolve([])
+        ]);
+
+        // Pass to pure computation service
+        const analyticsData = ReportComputationService.generateReportData(
+          transactions,
+          goals,
+          budgetDocs,
+          startDate,
+          endDate
+        );
+
+        // Use the generated analyticsData
 
         const dateRange = { startDate, endDate };
         // Fetch user from DB to get name (since JWT only has email/id)
         const dbUser = await User.findById(context.user.id);
         const userInfo = { name: dbUser?.username || dbUser?.email || context.user.email, email: context.user.email };
-        const fileName = `Financial_Report_${context.user.id}_${Date.now()}.pdf`;
+        const baseFileName = `Financial_Report_${context.user.id}_${Date.now()}.pdf`;
+        const tempFilePath = path.join(os.tmpdir(), baseFileName);
 
         try {
           const result = await PdfReportService.generateFinancialReport(
             analyticsData,
             dateRange,
             userInfo,
-            fileName,
+            tempFilePath,
             currencySymbol
           );
           console.log(`✅ Report generated: ${result.fileName}`);
+
+          // Schedule cleanup of the temp file after 5 seconds
+          setTimeout(() => {
+            fs.unlink(result.filePath, (err) => {
+              if (err && err.code !== 'ENOENT') console.error('Failed to clean up PDF:', err);
+            });
+          }, 5000);
 
           return {
             success: result.success,

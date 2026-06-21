@@ -38,15 +38,12 @@ class MonthlyReportService {
       month = prev.getMonth() + 1; // 1-indexed
     }
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate   = new Date(year, month, 0, 23, 59, 59, 999); // last day of month
-
     return {
       year,
       month,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate:   endDate.toISOString().split('T')[0],
-      monthLabel: startDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+      endDate:   `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`,
+      monthLabel: new Date(year, month - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
     };
   }
 

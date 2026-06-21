@@ -188,7 +188,7 @@ export default function VaultRAGToggle({ userId, onVaultSelect }) {
 
   // ── Main render ──────────────────────────────────────────────────────────────
   return (
-    <div style={wrapStyle}>
+    <div ref={dropdownRef} style={wrapStyle}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Hint bar / active bar */}

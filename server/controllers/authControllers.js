@@ -3,6 +3,14 @@ const JWTUtils = require('../utils/jwt');
 const ResponseUtils = require('../utils/response');
 const ValidationUtils = require('../utils/validation');
 const registrationOtpService = require('../services/registrationOtpService');
+const Transaction = require('../models/transactionModel');
+const Budget = require('../models/budgetModel');
+const Goal = require('../models/goalModel');
+const Reminder = require('../models/reminderModel');
+const Vault = require('../models/vaultModel');
+const Session = require('../models/sessionModel');
+const Notification = require('../models/notificationModel');
+const mongoose = require('mongoose');
 const { getClientIp } = require('../utils/ip');
 
 class AuthController {
@@ -134,7 +142,7 @@ class AuthController {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
@@ -213,25 +221,19 @@ class AuthController {
       const { accessToken, refreshToken, sessionId } = JWTUtils.generateTokenPair(user._id);
 
       // Implement token rotation: keep only last 5 tokens to prevent unbounded growth
-      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-      const recentTokens = user.refreshTokens
-        .filter(t => Date.now() - new Date(t.createdAt).getTime() < SEVEN_DAYS)
-        .slice(-4);
-      recentTokens.push({
+      const newToken = {
         _id: sessionId,
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
         createdAt: new Date()
-      });
+      };
 
-      // Use findByIdAndUpdate instead of save() to avoid triggering pre-save hook
-      // This is ~50% faster than user.save()
       const updatedUser = await User.findByIdAndUpdate(
         user._id,
         {
+          $push: { refreshTokens: { $each: [newToken], $slice: -5 } },
           $set: {
-            refreshTokens: recentTokens,
             lastLoginAt: new Date(),
             lastLoginProvider: 'email'
           }
@@ -243,7 +245,7 @@ class AuthController {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
@@ -293,14 +295,15 @@ class AuthController {
       }
 
       // Clean up expired tokens
-      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-      const recentTokens = user.refreshTokens
-        .filter(t => Date.now() - new Date(t.createdAt).getTime() < SEVEN_DAYS)
-        .slice(-5); // Keep up to 5 tokens
-
-      await User.findByIdAndUpdate(user._id, {
-        $set: { refreshTokens: recentTokens }
-      });
+      const currentTokenObj = user.refreshTokens.find(t => t.token === refreshToken);
+      if (currentTokenObj) {
+        await User.findByIdAndUpdate(user._id, {
+          $pull: { refreshTokens: { token: refreshToken } }
+        });
+        await User.findByIdAndUpdate(user._id, {
+          $push: { refreshTokens: { $each: [currentTokenObj], $slice: -5 } }
+        });
+      }
 
       // Generate new access token
       const newAccessToken = JWTUtils.generateAccessToken(user._id);
@@ -346,7 +349,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None'
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
       });
 
       return ResponseUtils.success(res, null, 'Logout successful');
@@ -489,8 +492,8 @@ class AuthController {
         return ResponseUtils.error(res, 'New password must be at least 8 characters long', 400);
       }
 
-      // Find the current user
-      const user = await User.findById(userId);
+      // Find the current user with password field
+      const user = await User.findById(userId).select('+password');
       if (!user) {
         return ResponseUtils.notFound(res, 'User not found');
       }
@@ -523,7 +526,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None'
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
       });
 
       // Log password change for security (optional)
@@ -577,14 +580,6 @@ class AuthController {
       }
 
       // Cascading delete
-      const Transaction = require('../models/transactionModel');
-      const Budget = require('../models/budgetModel');
-      const Goal = require('../models/goalModel');
-      const Reminder = require('../models/reminderModel');
-      const Vault = require('../models/vaultModel');
-      const Session = require('../models/sessionModel');
-      const Notification = require('../models/notificationModel');
-      const mongoose = require('mongoose');
 
       await Promise.all([
         Transaction.deleteMany({ userId: userId }),
@@ -594,7 +589,13 @@ class AuthController {
         Vault.deleteMany({ userId: userId }),
         Session.deleteMany({ userId: userId }),
         Notification.deleteMany({ userId: userId }),
-        mongoose.connection.db.collection('chat_history').deleteMany({ userId: userId.toString() }),
+        (async () => {
+          try {
+            await mongoose.connection.db.collection('chat_history').deleteMany({ userId: userId.toString() });
+          } catch (e) {
+            console.warn('[deleteProfile] error deleting chat_history', e);
+          }
+        })(),
         // Verify we're targeting the right DB before deleting embeddings
         (async () => {
           const dbName = mongoose.connection.db.databaseName;
@@ -611,7 +612,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None'
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
       });
 
       // Log account deletion for audit purposes
@@ -644,28 +645,28 @@ class AuthController {
 
       // OTP verified — issue tokens
       const { accessToken, refreshToken, sessionId } = JWTUtils.generateTokenPair(user._id);
-      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-      const recentTokens = user.refreshTokens
-        .filter(t => Date.now() - new Date(t.createdAt).getTime() < SEVEN_DAYS)
-        .slice(-4);
-      recentTokens.push({
+      
+      const newToken = {
         _id: sessionId,
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
         createdAt: new Date()
-      });
+      };
 
       const updatedUser = await User.findByIdAndUpdate(
         user._id,
-        { $set: { refreshTokens: recentTokens, lastLoginAt: new Date(), lastLoginProvider: 'email' } },
+        { 
+          $push: { refreshTokens: { $each: [newToken], $slice: -5 } },
+          $set: { lastLoginAt: new Date(), lastLoginProvider: 'email' } 
+        },
         { new: true }
       );
 
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
@@ -692,7 +693,7 @@ class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'None'
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax'
       });
 
       return ResponseUtils.success(res, null, 'Logged out from all devices');

@@ -119,8 +119,8 @@ const notificationService = {
    */
   async deleteOne(notificationId, userId) {
     const result = await Notification.findOneAndDelete({
-      _id: new mongoose.Types.ObjectId(notificationId),
-      userId: new mongoose.Types.ObjectId(userId),
+      _id: notificationId,
+      userId: userId,
     });
     return !!result;
   },

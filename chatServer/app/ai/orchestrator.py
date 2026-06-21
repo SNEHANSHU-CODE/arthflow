@@ -41,13 +41,13 @@ logger = logging.getLogger(__name__)
 # Intent classification — delegates to IntentClassifier in app.ai.ml
 # ---------------------------------------------------------------------------
 
-def _classify_intent(query: str) -> Dict[str, bool]:
+async def _classify_intent(query: str) -> Dict[str, bool]:
     """
-    Classify query intent using the weighted IntentClassifier.
+    Classify query intent using the LLM-based IntentClassifier.
     Handles broad queries ("analyse my performance") and multi-intent
-    queries ("am I saving enough?" → transactions + goals).
+    queries ("budget vs spending") mapping them to data requirements.
     """
-    return intent_classifier.get_intents_for_fetch(query)
+    return await intent_classifier.get_intents_for_fetch(query)
 
 
 # ---------------------------------------------------------------------------
@@ -357,7 +357,7 @@ Response Structure:
         Compile state, context, and fetch LLM for authenticated query.
         Returns: (messages, llm, provider, memory)
         """
-        intent = _classify_intent(query)
+        intent = await _classify_intent(query)
         logger.info(f"🔍 Intent detected: {intent}")
 
         context = await self._fetch_user_context(user_id, intent, query, currency_symbol)

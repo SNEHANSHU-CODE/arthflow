@@ -268,24 +268,6 @@ const validateMonthlySummary = [
 
 // Validation for category analysis
 const validateCategoryAnalysis = [
-  query('startDate')
-    .notEmpty()
-    .withMessage('Start date is required')
-    .isISO8601()
-    .withMessage('Start date must be in valid ISO format'),
-
-  query('endDate')
-    .notEmpty()
-    .withMessage('End date is required')
-    .isISO8601()
-    .withMessage('End date must be in valid ISO format')
-    .custom((value, { req }) => {
-      if (new Date(value) <= new Date(req.query.startDate)) {
-        throw new Error('End date must be after start date');
-      }
-      return true;
-    }),
-
   handleValidationErrors
 ];
 

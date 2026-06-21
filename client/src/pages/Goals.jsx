@@ -23,7 +23,7 @@ import {
 
 import { formatCurrency, formatPercent } from '../utils/formatters';
 import { useSettings } from '../hooks/useSettings';
-import LoadingSpinner from '../components/LodingSpinner';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 import goalService from "../services/goalService";
 import { usePreferences } from "../hooks/usePreferences";
@@ -84,12 +84,7 @@ export default function Goals() {
 
   // Load data on component mount
   useEffect(() => {
-    console.log('=== Goals Fetch Debug ===');
-    console.log('userId:', userId);
-    console.log('Auth state:', auth); // Add this to see full auth state
-
     if (!userId) {
-      console.log('No userId available, skipping fetch');
       return;
     }
 
@@ -101,14 +96,9 @@ export default function Goals() {
         await dispatch(fetchGoals()).unwrap();
         await dispatch(fetchDashboardStats()).unwrap();
       } catch (error) {
-        console.error('Error object:', error);
-        console.error('Error message:', error.message);
-
         // If it's a network error, log more details
         if (error.response) {
-          console.error('Response status:', error.response);
         } else if (error.request) {
-          console.error('Request made but no response:', error.request);
         }
       }
     };
@@ -122,6 +112,26 @@ export default function Goals() {
       dispatch(clearError());
     };
   }, [dispatch]);
+
+  // Handle Escape key for modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) resetForm();
+        if (showDeleteModal) {
+          setShowDeleteModal(false);
+          setGoalToDelete(null);
+        }
+        if (showAddFundsModal) {
+          setShowAddFundsModal(false);
+          setSelectedGoal(null);
+          setAddFundsAmount("");
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAddModal, showDeleteModal, showAddFundsModal]);
 
   const getProgressPercentage = (saved, target) => {
     return goalService.getProgressPercentage(saved || 0, target || 1);
@@ -173,8 +183,6 @@ export default function Goals() {
           goalData
         })).unwrap();
       } else {
-        console.log("Form values:", formData);
-        console.log("Final goal data:", goalData);
         await dispatch(createGoal(goalData)).unwrap();
       }
 
@@ -571,7 +579,7 @@ export default function Goals() {
 
       {/* Add/Edit Goal Modal */}
       {showAddModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -620,7 +628,7 @@ export default function Goals() {
                         className="form-control"
                         value={formData.targetDate}
                         onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toLocaleDateString('en-CA')}
                         required
                       />
                     </div>
@@ -683,7 +691,7 @@ export default function Goals() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && goalToDelete && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">

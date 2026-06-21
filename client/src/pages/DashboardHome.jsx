@@ -8,7 +8,7 @@ export default function DashboardHome() {
   };
 
   return (
-    <div className="container-fluid h bg-light nav-top-margin">
+    <div className="container-fluid h-100 bg-light nav-top-margin">
       <div className="row">
         {/* Sidebar Toggle Button for Mobile */}
         <button

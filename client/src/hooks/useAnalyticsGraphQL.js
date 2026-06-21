@@ -1,6 +1,6 @@
 import { useQuery } from '@apollo/client';
 import { GET_ALL_ANALYTICS } from '../graphql/analyticsQueries';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 /**
  * Custom hook to fetch all analytics data in a single GraphQL query
@@ -26,24 +26,16 @@ export const useAllAnalyticsData = (startDate, endDate, options = {}) => {
     pollInterval,
     fetchPolicy, // Ensures fresh data on every query (no stale cache)
     errorPolicy: 'all', // Return partial data on error for better UX
-    onCompleted: (data) => {
-      console.log('✅ Analytics Data Fetched (Fresh from Network):', {
-        hasDashboard: !!data?.dashboard,
-        hasSpendingTrends: !!data?.spendingTrends,
-        hasCategoryAnalysis: !!data?.categoryAnalysis,
-        hasGoalsProgress: !!data?.goalsProgress,
-        hasIncomeTrends: !!data?.incomeTrends,
-      });
-      onCompleted?.(data);
+    onCompleted: (resultData) => {
+      onCompleted?.(resultData);
     },
-    onError: (error) => {
-      console.error('❌ Analytics Query Error:', error.message);
-      onError?.(error);
+    onError: (queryError) => {
+      onError?.(queryError);
     }
   });
 
   // Parse and normalize the data with null-safe defaults
-  const analytics = useCallback(() => {
+  const analytics = useMemo(() => {
     if (!data) return null;
 
     return {
@@ -65,7 +57,7 @@ export const useAllAnalyticsData = (startDate, endDate, options = {}) => {
   }, [data]);
 
   return {
-    analytics: analytics(),
+    analytics,
     loading,
     error,
     refetch,

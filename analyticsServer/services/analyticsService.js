@@ -26,6 +26,10 @@ class AnalyticsService {
   }
 
   setCache(key, data) {
+    if (this.cache.size >= 1000) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
     this.cache.set(key, {
       data,
       timestamp: Date.now()
@@ -65,39 +69,51 @@ class AnalyticsService {
         return cached;
       }
 
-      // Convert string dates to Date objects
+      // Safely parse dates
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
       // Validate date range
-      if (start > end) {
-        throw new Error('Start date cannot be after end date');
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+        throw new Error('Invalid date range');
       }
 
       // Query transactions for date range
       const transactions = await Transaction.find({
         userId,
         date: { $gte: start, $lte: end }
-      }).sort({ date: -1, createdAt: -1 }).limit(10).lean(); // Use .lean() for performance
+      }).sort({ date: -1, createdAt: -1 }).limit(10).lean();
 
-      // Calculate summary from ALL transactions in range using aggregation for accuracy
-      const allTransactions = await Transaction.find({
-        userId,
-        date: { $gte: start, $lte: end }
-      }).lean();
-
-      let totalIncome = 0;
-      let totalExpenses = 0;
-
-      // CRITICAL: Only sum real transactions, not defaults
-      allTransactions.forEach(txn => {
-        if (txn.type === 'income' || txn.type === 'Income') {
-          totalIncome += Math.max(0, txn.amount); // Only positive amounts for income
-        } else if (txn.type === 'expense' || txn.type === 'Expense') {
-          totalExpenses += Math.abs(txn.amount); // Always use absolute value for expenses
+      // Calculate summary using aggregation for efficiency
+      const summaryStats = await Transaction.aggregate([
+        {
+          $match: {
+            userId: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId,
+            date: { $gte: start, $lte: end }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalIncome: {
+              $sum: {
+                $cond: [{ $in: ['$type', ['income', 'Income']] }, { $max: [0, '$amount'] }, 0]
+              }
+            },
+            totalExpenses: {
+              $sum: {
+                $cond: [{ $in: ['$type', ['expense', 'Expense']] }, { $abs: '$amount' }, 0]
+              }
+            }
+          }
         }
-      });
+      ]);
+
+      const stats = summaryStats[0] || { totalIncome: 0, totalExpenses: 0 };
+      const totalIncome = stats.totalIncome;
+      const totalExpenses = stats.totalExpenses;
 
       const netSavings = totalIncome - totalExpenses;
       const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
@@ -141,10 +157,12 @@ class AnalyticsService {
       if (cached) return cached;
 
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
-      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const diffDays = Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / msPerDay);
       
       let groupId, sortGroup;
       if (diffDays <= 35) {
@@ -236,6 +254,7 @@ class AnalyticsService {
       if (cached) return cached;
 
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
@@ -346,10 +365,12 @@ class AnalyticsService {
       if (cached) return cached;
 
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
-      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const diffDays = Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / msPerDay);
       let groupId, sortGroup;
       if (diffDays <= 35) {
         groupId = { year: { $year: '$date' }, month: { $month: '$date' }, day: { $dayOfMonth: '$date' } };
@@ -419,10 +440,12 @@ class AnalyticsService {
       if (cached) return cached;
 
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
-      const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const diffDays = Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / msPerDay);
       let groupId, sortGroup;
       if (diffDays <= 35) {
         groupId = { year: { $year: '$date' }, month: { $month: '$date' }, day: { $dayOfMonth: '$date' } };
@@ -519,6 +542,7 @@ class AnalyticsService {
       if (cached) return cached;
 
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
@@ -538,9 +562,9 @@ class AnalyticsService {
       };
 
       if (transactions.length > 0) {
-        const amounts = transactions.map(t => t.amount).sort((a, b) => b - a);
-        const maxTxn = transactions.find(t => t.amount === amounts[0]);
-        const minTxn = transactions.find(t => t.amount === amounts[amounts.length - 1]);
+        const amounts = transactions.map(t => Math.abs(t.amount)).sort((a, b) => b - a);
+        const maxTxn = transactions.find(t => Math.abs(t.amount) === amounts[0]);
+        const minTxn = transactions.find(t => Math.abs(t.amount) === amounts[amounts.length - 1]);
 
         stats.maxTransaction = {
           amount: maxTxn.amount,
@@ -554,9 +578,10 @@ class AnalyticsService {
           date: minTxn.date.toISOString().split('T')[0]
         };
 
-        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const daysDiff = Math.max(1, Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) - Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / msPerDay));
         stats.dailyAverage = parseFloat((transactions.length / daysDiff).toFixed(2));
-        stats.averagePerDay = parseFloat((transactions.reduce((sum, t) => sum + t.amount, 0) / daysDiff).toFixed(2));
+        stats.averagePerDay = parseFloat((transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0) / daysDiff).toFixed(2));
 
         // Top category
         const categoryCount = {};
@@ -591,6 +616,7 @@ class AnalyticsService {
       if (cached) return cached;
 
       const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
@@ -629,12 +655,19 @@ class AnalyticsService {
         return empty;
       }
 
-      // Merge categories across months — sum limits for multi-month ranges,
-      // so a user who set Food=5000/month gets Food=10000 for a 2-month range.
+      // Merge categories across months — prorate limits for the actual date range
+      // so a user who set Food=5000/month gets a proportional budget for partial months.
+      let totalBudgetDays = 0;
+      for (const cond of monthYearConditions) {
+        totalBudgetDays += new Date(cond.year, cond.month, 0).getDate();
+      }
+      const daysInRange = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      const prorationFactor = totalBudgetDays > 0 ? (daysInRange / totalBudgetDays) : 1;
+
       const categoryLimitMap = {};
       for (const doc of budgetDocs) {
         for (const cat of (doc.categories || [])) {
-          categoryLimitMap[cat.name] = (categoryLimitMap[cat.name] || 0) + (cat.limit ?? 0);
+          categoryLimitMap[cat.name] = (categoryLimitMap[cat.name] || 0) + ((cat.limit ?? 0) * prorationFactor);
         }
       }
 

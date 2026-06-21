@@ -90,7 +90,7 @@ goalSchema.virtual('isOverdue').get(function() {
 
 // Method to update saved amount
 goalSchema.methods.updateSavedAmount = function(amount) {
-  this.savedAmount += amount;
+  this.savedAmount += Number(amount);
   if (this.savedAmount >= this.targetAmount && this.status !== 'Completed') {
     this.status = 'Completed';
     this.completedDate = new Date();

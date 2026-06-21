@@ -7,9 +7,7 @@ export const fetchGoals = createAsyncThunk(
   async (filters = {}, { getState, rejectWithValue }) => {
     try {
       const userId = getState().auth.user?.userId;
-      console.log('goalSlice', userId);
       const response = await goalService.getGoals({...filters, userId});
-      console.log('goalSlice', response);
       return response.data?.data || response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to fetch goals' });

@@ -19,6 +19,20 @@ from app.services.userService import get_user_service
 from app.websocket.logger import WebSocketLogger
 from app.websocket.response_handler import MessageResponseHandler
 
+from app.ai.orchestrator import get_orchestrator
+from app.core.database import Database
+from app.ai.config import llm_settings
+from app.ai.llm.init import llm_provider
+from langchain_core.messages import SystemMessage, HumanMessage
+from app.ai.prompts.guestTemplate import (
+    GUEST_SYSTEM_PROMPT,
+    GuestPromptBuilder,
+    GUEST_SIGNIN_PROMPT
+)
+from app.ai.utils.pii_masker import mask_message, get_safety_message
+from app.ai.utils.fast_classifier import classify
+from app.services.vaultService import vault_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -198,21 +212,7 @@ class SocketEventHandlers:
                 "timestamp": datetime.utcnow().isoformat(),
             }, room=sid)
 
-            # Inline imports to avoid circular dependency issues during startup
-            from app.ai.orchestrator import get_orchestrator
-            from app.core.database import Database
-            from app.ai.config import llm_settings
-            from app.ai.llm.init import llm_provider
-            from langchain_core.messages import SystemMessage, HumanMessage
-            from app.ai.prompts.guestTemplate import (
-                GUEST_SYSTEM_PROMPT,
-                GuestPromptBuilder,
-                GUEST_SIGNIN_PROMPT
-            )
-            from app.ai.utils.pii_masker import mask_message, get_safety_message
-            from app.ai.utils.fast_classifier import classify
-            from app.services.vaultService import vault_service
-
+            # Removed inline imports
             # Get session
             session = self.get_session(sid)
             is_authenticated = session.get("is_authenticated", False)
@@ -245,6 +245,7 @@ class SocketEventHandlers:
                     # Validate Vault Ownership
                     vault = await vault_service.get_by_id(vault_id, user_id=user_id)
                     if not vault:
+                        await self.sio.emit('bot_typing', {"isTyping": False}, room=sid)
                         await self.sio.emit('error', {
                             "message": "Vault not found",
                             "code": "VAULT_NOT_FOUND",
@@ -351,6 +352,32 @@ class SocketEventHandlers:
                         logger.warning("Stream failed for primary provider, attempting fallback...")
                         if provider != "gemini":
                             try:
+                                # Terminate old broken bubble
+                                await self.sio.emit('bot_response_chunk', {
+                                    "messageId": message_id,
+                                    "chunk": "",
+                                    "isFirst": False,
+                                    "isLast": True,
+                                    "provider": provider,
+                                    "metadata": {"error": "stream_failed"},
+                                    "timestamp": datetime.utcnow().isoformat(),
+                                }, room=sid)
+
+                                # Reset state and create a new clean message bubble
+                                message_id = f"msg-{datetime.utcnow().timestamp()}-{request_id}-fallback"
+                                accumulated_text = prefix_text
+
+                                # Start the new clean bubble
+                                await self.sio.emit('bot_response_chunk', {
+                                    "messageId": message_id,
+                                    "chunk": prefix_text,
+                                    "isFirst": True,
+                                    "isLast": False,
+                                    "provider": "gemini",
+                                    "metadata": None,
+                                    "timestamp": datetime.utcnow().isoformat(),
+                                }, room=sid)
+
                                 fallback_llm = await llm_provider.get_gemini_llm()
                                 async for chunk in fallback_llm.astream(messages):
                                     token = chunk.content if hasattr(chunk, 'content') else str(chunk)
@@ -391,6 +418,23 @@ class SocketEventHandlers:
             except Exception as e:
                 logger.error(f"❌ Error generating response: {e}", exc_info=True)
                 await self.sio.emit('bot_typing', {"isTyping": False}, room=sid)
+                
+                # Terminate the original message bubble if it was streaming
+                try:
+                    # message_id might be unbound if it failed early, so we check using locals()
+                    if 'message_id' in locals() and message_id:
+                        await self.sio.emit('bot_response_chunk', {
+                            "messageId": message_id,
+                            "chunk": "",
+                            "isFirst": False,
+                            "isLast": True,
+                            "provider": provider if 'provider' in locals() else "fallback",
+                            "metadata": {"error": "stream_failed"},
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }, room=sid)
+                except Exception:
+                    pass
+                    
                 error_msg = "I'm having trouble processing your request. Please try again."
                 await self.sio.emit('bot_response_chunk', {
                     "messageId": f"error-{datetime.utcnow().timestamp()}",

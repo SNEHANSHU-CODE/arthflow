@@ -22,9 +22,7 @@ class TransactionController {
   // Get all transactions with filters and pagination
   async getTransactions(req, res) {
     try {
-      const userId = (req.userId || req.query.userId)?.toString();;
-      
-      console.log("userId received in controller:", userId);
+      const userId = req.userId?.toString();
       const options = {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 20,
@@ -81,7 +79,8 @@ class TransactionController {
       res.status(200).json(result);
     } catch (error) {
       console.error('Update transaction error:', error);
-      res.status(400).json({
+      const statusCode = error.message === 'Transaction not found' ? 404 : 400;
+      res.status(statusCode).json({
         success: false,
         message: error.message || 'Failed to update transaction'
       });
@@ -99,7 +98,8 @@ class TransactionController {
       res.status(200).json(result);
     } catch (error) {
       console.error('Delete transaction error:', error);
-      res.status(400).json({
+      const statusCode = error.message === 'Transaction not found' ? 404 : 400;
+      res.status(statusCode).json({
         success: false,
         message: error.message || 'Failed to delete transaction'
       });
@@ -283,10 +283,9 @@ async getCategoryAnalysis(req, res) {
 
       const options = {
         page: Math.max(1, parseInt(req.query.page) || 1),
-        limit: Math.min(100, Math.max(1, parseInt(req.query.limit) || 20)),
+        limit: 10000,
         startDate,
-        endDate,
-        limit: 10000 // Large limit for export
+        endDate
       };
 
       const result = await transactionService.getTransactions(userId, options);
@@ -297,9 +296,10 @@ async getCategoryAnalysis(req, res) {
         res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
         
         // Convert to CSV (you might want to use a proper CSV library)
+        const esc = (s) => `"${String(s || '').replace(/"/g, '""')}"`;
         const csvHeader = 'Date,Description,Amount,Type,Category,Payment Method,Notes\n';
         const csvData = result.data.transactions
-          .map(t => `${t.date},${t.description},${t.amount},${t.type},${t.category},${t.paymentMethod},"${t.notes || ''}"`)
+          .map(t => `${esc(t.date)},${esc(t.description)},${esc(t.amount)},${esc(t.type)},${esc(t.category)},${esc(t.paymentMethod)},${esc(t.notes)}`)
           .join('\n');
         
         res.send(csvHeader + csvData);

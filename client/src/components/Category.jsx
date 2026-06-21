@@ -5,7 +5,7 @@ import {
 } from "react-icons/fa";
 import { usePreferences } from '../hooks/usePreferences';
 
-export default function Catagory({ catagoryData }) {
+export default function Category({ categoryData }) {
     const { formatCurrency } = usePreferences();
     return (
         <div className="card border-0 shadow-sm">
@@ -15,8 +15,8 @@ export default function Catagory({ catagoryData }) {
                 </div>
             </div>
             <div className="card-body pt-2">
-                {catagoryData.map((category, index) => (
-                    <div key={index} className="mb-4">
+                {categoryData.map((category) => (
+                    <div key={category.category} className="mb-4">
                         <div className="d-flex justify-content-between align-items-center mb-2">
                             <div className="d-flex align-items-center gap-2">
                                 <span className="fw-medium">{category.category}</span>

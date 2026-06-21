@@ -1,6 +1,7 @@
 const PdfPrinter = require('pdfmake/src/printer');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 /**
  * PDF Report Generator Service
@@ -30,7 +31,7 @@ class PdfReportService {
    * Generate complete financial report PDF
    * Validates data before generation and handles errors gracefully
    */
-  async generateFinancialReport(analyticsData, dateRange, userInfo, fileName = null) {
+  async generateFinancialReport(analyticsData, dateRange, userInfo, fileName = null, currencySymbol = '$') {
     try {
       // Validate required data
       if (!analyticsData || typeof analyticsData !== 'object') {
@@ -51,8 +52,8 @@ class PdfReportService {
 
       console.log(`📄 Generating PDF report (${fileName || 'default'})`);
 
-      const docDefinition = this.buildReportDocument(analyticsData, dateRange, userInfo);
-      const generatedFileName = fileName || `Financial_Report_${Date.now()}.pdf`;
+      const docDefinition = this.buildReportDocument(analyticsData, dateRange, userInfo, currencySymbol);
+      const generatedFileName = fileName || path.join(os.tmpdir(), `Financial_Report_${Date.now()}.pdf`);
       
       return new Promise((resolve, reject) => {
         // Create write stream with error handling
@@ -98,7 +99,7 @@ class PdfReportService {
   /**
    * Build the PDF document structure
    */
-  buildReportDocument(analyticsData, dateRange, userInfo) {
+  buildReportDocument(analyticsData, dateRange, userInfo, currencySymbol) {
     console.log('📄 Building PDF document with Helvetica fonts');
     const {
       dashboard = {},
@@ -158,12 +159,12 @@ class PdfReportService {
 
         // Executive Summary
         { text: 'Executive Summary', style: 'heading' },
-        this.buildExecutiveSummary(dashboard, currentMonthAnalytics),
+        this.buildExecutiveSummary(dashboard, currentMonthAnalytics, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Dashboard Overview
         { text: 'Dashboard Overview', style: 'heading' },
-        this.buildDashboardSection(dashboard),
+        this.buildDashboardSection(dashboard, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Page Break
@@ -171,12 +172,12 @@ class PdfReportService {
 
         // Spending Analysis
         { text: 'Spending Analysis', style: 'heading' },
-        this.buildSpendingSection(spendingTrends, categoryAnalysis),
+        this.buildSpendingSection(spendingTrends, categoryAnalysis, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Income Analysis
         { text: 'Income Analysis', style: 'heading' },
-        this.buildIncomeSection(incomeTrends),
+        this.buildIncomeSection(incomeTrends, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Page Break
@@ -184,12 +185,12 @@ class PdfReportService {
 
         // Savings Analysis
         { text: 'Savings Analysis', style: 'heading' },
-        this.buildSavingsSection(savingsTrends),
+        this.buildSavingsSection(savingsTrends, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Goals Progress
         { text: 'Goals Progress', style: 'heading' },
-        this.buildGoalsSection(goalsProgress),
+        this.buildGoalsSection(goalsProgress, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Page Break
@@ -197,12 +198,12 @@ class PdfReportService {
 
         // Budget Performance
         { text: 'Budget Performance', style: 'heading' },
-        this.buildBudgetSection(budgetPerformance),
+        this.buildBudgetSection(budgetPerformance, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Transaction Insights
         { text: 'Transaction Insights', style: 'heading' },
-        this.buildTransactionInsightsSection(transactionInsights),
+        this.buildTransactionInsightsSection(transactionInsights, currencySymbol),
         { text: '', margin: [0, 20] },
 
         // Current Month Summary
@@ -342,7 +343,7 @@ class PdfReportService {
   /**
    * Build Executive Summary Section
    */
-  buildExecutiveSummary(dashboard, currentMonth) {
+  buildExecutiveSummary(dashboard, currentMonth, currencySymbol) {
     const summary = dashboard?.monthly?.summary || {};
     const currentMonthSummary = currentMonth?.summary || {};
 
@@ -359,9 +360,9 @@ class PdfReportService {
                 widths: ['*', '*'],
                 body: [
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Amount', style: 'tableHeader' }],
-                  ['Total Income', { text: `${(summary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
-                  ['Total Expenses', { text: `${(summary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
-                  ['Net Savings', { text: `${(summary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Total Income', { text: `${currencySymbol}${(summary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Total Expenses', { text: `${currencySymbol}${(summary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
+                  ['Net Savings', { text: `${currencySymbol}${(summary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
                   ['Savings Rate', { text: `${(summary.savingsRate || 0).toFixed(2)}%`, style: 'neutral' }]
                 ]
               }
@@ -379,9 +380,9 @@ class PdfReportService {
                 widths: ['*', '*'],
                 body: [
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Amount', style: 'tableHeader' }],
-                  ['Income', { text: `${(currentMonthSummary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
-                  ['Expenses', { text: `${(currentMonthSummary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
-                  ['Savings', { text: `${(currentMonthSummary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Income', { text: `${currencySymbol}${(currentMonthSummary.totalIncome || 0).toFixed(2)}`, style: 'positive' }],
+                  ['Expenses', { text: `${currencySymbol}${(currentMonthSummary.totalExpenses || 0).toFixed(2)}`, style: 'negative' }],
+                  ['Savings', { text: `${currencySymbol}${(currentMonthSummary.netSavings || 0).toFixed(2)}`, style: 'positive' }],
                   ['Savings %', { text: `${(currentMonthSummary.savingsRate || 0).toFixed(2)}%`, style: 'neutral' }]
                 ]
               }
@@ -396,14 +397,14 @@ class PdfReportService {
   /**
    * Build Dashboard Section
    */
-  buildDashboardSection(dashboard) {
+  buildDashboardSection(dashboard, currencySymbol) {
     const recent = dashboard?.recent || [];
     
     const recentTransactions = recent.slice(0, 5).map(txn => [
       txn.description || txn.category,
       txn.category,
       txn.date,
-      { text: `${(txn.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(txn.amount || 0).toFixed(2)}`, alignment: 'right' },
       { text: (txn.type || 'unknown').toUpperCase(), style: (txn.type || '' ) === 'income' ? 'positive' : 'negative' }
     ]);
 
@@ -435,20 +436,20 @@ class PdfReportService {
   /**
    * Build Spending Analysis Section
    */
-  buildSpendingSection(spendingTrends, categoryAnalysis) {
+  buildSpendingSection(spendingTrends, categoryAnalysis, currencySymbol) {
     const trends = spendingTrends?.trends || [];
     const categories = categoryAnalysis?.categories || [];
 
     const trendsTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
-      { text: `${(t.totalExpenses || 0).toFixed(2)}`, alignment: 'right', style: 'negative' },
-      { text: `${(t.netSavings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
+      { text: `${currencySymbol}${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
+      { text: `${currencySymbol}${(t.totalExpenses || 0).toFixed(2)}`, alignment: 'right', style: 'negative' },
+      { text: `${currencySymbol}${(t.netSavings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
     ]);
 
     const categoryTable = categories.slice(0, 8).map(c => [
       c.category,
-      { text: `${(c.amount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(c.amount || 0).toFixed(2)}`, alignment: 'right' },
       { text: `${(c.percentage || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
@@ -505,13 +506,13 @@ class PdfReportService {
   /**
    * Build Income Section
    */
-  buildIncomeSection(incomeTrends) {
+  buildIncomeSection(incomeTrends, currencySymbol) {
     const trends = incomeTrends?.trends || [];
     const avgIncome = incomeTrends?.averageMonthlyIncome || 0;
 
     const incomeTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
+      { text: `${currencySymbol}${(t.totalIncome || 0).toFixed(2)}`, alignment: 'right', style: 'positive' }
     ]);
 
     return {
@@ -549,7 +550,7 @@ class PdfReportService {
                     widths: ['*', '*'],
                     body: [
                       [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
-                      ['Average Monthly Income', { text: `${(avgIncome || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Average Monthly Income', { text: `${currencySymbol}${(avgIncome || 0).toFixed(2)}`, style: 'positive' }],
                       ['Total Months', trends.length.toString()],
                       ['Highest Month', trends.length > 0 ? trends.reduce((max, t) => t.totalIncome > max.totalIncome ? t : max).monthYear : 'N/A']
                     ]
@@ -567,7 +568,7 @@ class PdfReportService {
   /**
    * Build Savings Section
    */
-  buildSavingsSection(savingsTrends) {
+  buildSavingsSection(savingsTrends, currencySymbol) {
     const trends = savingsTrends?.trends || [];
     const avgSavings = savingsTrends?.averageMonthlySavings || 0;
     const totalSavings = savingsTrends?.totalSavings || 0;
@@ -575,7 +576,7 @@ class PdfReportService {
 
     const savingsTable = trends.slice(0, 6).map(t => [
       t.monthYear,
-      { text: `${(t.savings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
+      { text: `${currencySymbol}${(t.savings || 0).toFixed(2)}`, alignment: 'right', style: 'positive' },
       { text: `${(t.savingsRate || 0).toFixed(2)}%`, alignment: 'right' }
     ]);
 
@@ -615,10 +616,10 @@ class PdfReportService {
                     widths: ['*', '*'],
                     body: [
                       [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
-                      ['Total Savings', { text: `${(totalSavings || 0).toFixed(2)}`, style: 'positive' }],
-                      ['Average Monthly', { text: `${(avgSavings || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Total Savings', { text: `${currencySymbol}${(totalSavings || 0).toFixed(2)}`, style: 'positive' }],
+                      ['Average Monthly', { text: `${currencySymbol}${(avgSavings || 0).toFixed(2)}`, style: 'positive' }],
                       ['Best Month', bestMonth.month || 'N/A'],
-                      ['Best Month Amount', bestMonth.amount ? `${bestMonth.amount.toFixed(2)}` : 'N/A']
+                      ['Best Month Amount', bestMonth.amount ? `${currencySymbol}${bestMonth.amount.toFixed(2)}` : 'N/A']
                     ]
                   }
                 }
@@ -634,7 +635,7 @@ class PdfReportService {
   /**
    * Build Goals Section
    */
-  buildGoalsSection(goalsProgress) {
+  buildGoalsSection(goalsProgress, currencySymbol) {
     const goals = goalsProgress?.goals || [];
     const summary = goalsProgress?.summary || {};
 
@@ -642,8 +643,8 @@ class PdfReportService {
       g.name || 'Unnamed Goal',
       g.category || 'N/A',
       { text: `${(g.progress || 0).toFixed(2)}%`, alignment: 'right' },
-      { text: `${(g.savedAmount || 0).toFixed(2)}`, alignment: 'right' },
-      { text: `${(g.targetAmount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(g.savedAmount || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(g.targetAmount || 0).toFixed(2)}`, alignment: 'right' },
       { 
         text: g.status || 'Unknown', 
         alignment: 'center',
@@ -709,14 +710,14 @@ class PdfReportService {
   /**
    * Build Budget Section
    */
-  buildBudgetSection(budgetPerformance) {
+  buildBudgetSection(budgetPerformance, currencySymbol) {
     const categories = budgetPerformance?.categories || [];
 
     const budgetTable = categories.map(c => [
       c.category,
-      { text: `${(c.budgeted || 0).toFixed(2)}`, alignment: 'right' },
-      { text: `${(c.spent || 0).toFixed(2)}`, alignment: 'right' },
-      { text: `${(c.remaining || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(c.budgeted || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(c.spent || 0).toFixed(2)}`, alignment: 'right' },
+      { text: `${currencySymbol}${(c.remaining || 0).toFixed(2)}`, alignment: 'right' },
       { text: `${(c.percentageUsed || 0).toFixed(2)}%`, alignment: 'right' },
       { 
         text: c.status, 
@@ -767,7 +768,7 @@ class PdfReportService {
   /**
    * Build Transaction Insights Section
    */
-  buildTransactionInsightsSection(transactionInsights) {
+  buildTransactionInsightsSection(transactionInsights, currencySymbol) {
     const {
       totalTransactions = 0,
       dailyAverage = 0,
@@ -792,7 +793,7 @@ class PdfReportService {
                   [{ text: 'Metric', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
                   ['Total Transactions', totalTransactions.toString()],
                   ['Daily Average', (dailyAverage || 0).toFixed(2)],
-                  ['Average Amount/Day', `${(averagePerDay || 0).toFixed(2)}`],
+                  ['Average Amount/Day', `${currencySymbol}${(averagePerDay || 0).toFixed(2)}`],
                   ['Top Category', topCategory]
                 ]
               }

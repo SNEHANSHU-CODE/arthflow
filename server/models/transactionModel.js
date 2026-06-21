@@ -296,7 +296,16 @@ transactionSchema.statics.getMonthlySummary = async function(userId, month, year
           }
         },
         transactionCount: { $sum: 1 },
-        avgTransactionAmount: { $avg: { $abs: '$amount' } },
+        avgIncome: {
+          $avg: {
+            $cond: [{ $eq: ['$type', 'Income'] }, '$amount', null]
+          }
+        },
+        avgExpense: {
+          $avg: {
+            $cond: [{ $eq: ['$type', 'Expense'] }, { $abs: '$amount' }, null]
+          }
+        },
         categories: {
           $push: {
             category: '$category',
@@ -319,7 +328,8 @@ transactionSchema.statics.getMonthlySummary = async function(userId, month, year
     totalIncome: 0,
     totalExpenses: 0,
     transactionCount: 0,
-    avgTransactionAmount: 0,
+    avgIncome: 0,
+    avgExpense: 0,
     categories: [],
     paymentMethods: []
   };
@@ -358,7 +368,8 @@ transactionSchema.statics.getMonthlySummary = async function(userId, month, year
       netSavings: Math.round(netSavings * 100) / 100,
       savingsRate: Math.round(savingsRate * 100) / 100,
       transactionCount: summary.transactionCount,
-      averageTransactionAmount: Math.round(summary.avgTransactionAmount * 100) / 100,
+      averageIncome: Math.round((summary.avgIncome || 0) * 100) / 100,
+      averageExpense: Math.round((summary.avgExpense || 0) * 100) / 100,
       dailyAverage: Math.round((summary.totalIncome + summary.totalExpenses) / daysInMonth * 100) / 100
     },
     breakdowns: {
@@ -497,7 +508,10 @@ transactionSchema.methods.setRecurring = function(frequency, endDate = null) {
 
 // Helper method to calculate next recurring date
 transactionSchema.methods.calculateNextDate = function(frequency) {
-  const currentDate = new Date(this.date);
+  const baseDate = (this.recurringPattern && this.recurringPattern.nextDate) 
+    ? this.recurringPattern.nextDate 
+    : this.date;
+  const currentDate = new Date(baseDate);
   
   switch (frequency) {
     case 'Daily':

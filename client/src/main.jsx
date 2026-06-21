@@ -16,9 +16,9 @@ import client from './graphql/apolloClient';
 
 import { registerServiceWorker } from './pwa/serviceWorker.js';
 
-// Disable console in production
+// Disable console logs in production, but keep warn and error
 if (import.meta.env.VITE_DISABLE_CONSOLE === 'true') {
-  console.log = console.warn = console.error = console.info = console.debug = function() {};
+  console.log = console.info = console.debug = function() {};
 }
 
 createRoot(document.getElementById('root')).render(

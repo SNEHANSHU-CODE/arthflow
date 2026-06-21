@@ -199,6 +199,7 @@ const initialState = {
   monthlySummary: null,
   categoryAnalysis: null,
   spendingTrends: null,
+  recentTransactions: [],
   loading: false,
   error: null,
   filters: {
@@ -335,6 +336,11 @@ const transactionSlice = createSlice({
       .addCase(fetchDashboardStats.fulfilled, (state, action) => {
         state.dashboardStats = action.payload;
       })
+
+      // Recent transactions
+      .addCase(recentTransactions.fulfilled, (state, action) => {
+        state.recentTransactions = action.payload;
+      })
       
       // Monthly summary
       .addCase(fetchMonthlySummary.fulfilled, (state, action) => {
@@ -348,13 +354,11 @@ const transactionSlice = createSlice({
     })
     .addCase(fetchCategoryAnalysis.fulfilled, (state, action) => {
       state.loading = false;
-      state.categoryAnalysis = action.payload; // This should be the analysis object
-      console.log('Category analysis stored:', action.payload);
+      state.categoryAnalysis = action.payload; 
     })
     .addCase(fetchCategoryAnalysis.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload;
-      console.error('Category analysis rejected:', action.payload);
     })
       
       // Spending trends

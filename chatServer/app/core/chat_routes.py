@@ -4,12 +4,13 @@ Exposes chat functionality through REST endpoints
 """
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.database import Database
 from app.ai.orchestrator import get_orchestrator
+from app.ai.memory.chat_memory import ChatMemory
 
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,9 @@ async def get_db() -> AsyncIOMotorDatabase:
     }
 )
 async def chat_query(
+    request: Request,
     message: ChatMessage,
-    user_id: Optional[str] = None,
+    user_id: Optional[str] = Header(None),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ) -> ChatResponse:
     """
@@ -110,6 +112,23 @@ async def chat_query(
             user_id=user_id,
             provider=message.provider
         )
+        
+        # Explicitly persist chat memory for REST queries
+        if user_id and result.get("status") != "error":
+            try:
+                memory = ChatMemory(user_id=user_id, db=db)
+                await memory.add_message(message.content, message_type="human")
+                await memory.add_message(
+                    result["response"],
+                    message_type="ai",
+                    metadata={
+                        "provider": message.provider or result.get("provider"),
+                        "is_rag": False,
+                        "messageId": f"rest-{__import__('uuid').uuid4().hex}"
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Failed to persist chat memory: {e}")
         
         # Handle errors
         if result.get("status") == "error":
@@ -148,7 +167,7 @@ async def chat_query(
     }
 )
 async def get_chat_history(
-    user_id: str,
+    user_id: Optional[str] = Header(None),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ) -> list:
     """
@@ -189,7 +208,7 @@ async def get_chat_history(
     }
 )
 async def clear_chat_history(
-    user_id: str,
+    user_id: Optional[str] = Header(None),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ) -> dict:
     """

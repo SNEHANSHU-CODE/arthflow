@@ -44,6 +44,7 @@ const ChatBot = () => {
   const [message, setMessage] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [activeVault, setActiveVault] = useState(null); // RAG mode
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const dispatch = useDispatch();
   const messagesEndRef = useRef(null);
@@ -162,8 +163,10 @@ const ChatBot = () => {
   // ---------------------------------------------------------------
   // Reconnect when auth state changes (login / logout)
   // ---------------------------------------------------------------
+  const userId = user?.id || user?.userId || user?._id;
+
   useEffect(() => {
-    const hasUser = !!user;
+    const hasUser = !!userId;
     const hasToken = !!accessToken;
 
     // Wait for Redux state to settle
@@ -176,7 +179,7 @@ const ChatBot = () => {
     dispatch(disconnectSocket());
     const id = setTimeout(() => dispatch(connectSocket()), 300);
     return () => clearTimeout(id);
-  }, [isAuthenticated, user, accessToken, dispatch]);
+  }, [isAuthenticated, userId, accessToken, dispatch]);
 
   // ---------------------------------------------------------------
   // Fetch suggestions ONCE after connection — not on every render
@@ -233,12 +236,15 @@ const ChatBot = () => {
   };
 
   const handleClearChat = () => {
-    if (window.confirm('Clear the chat history?')) {
-      dispatch(clearChatHistory()); // clears DB + Redux state
-      setShowSuggestions(true);
-      suggestionsRequestedRef.current = false;
-      dispatch(getSmartSuggestions());
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearChat = () => {
+    dispatch(clearChatHistory()); // clears DB + Redux state
+    setShowSuggestions(true);
+    suggestionsRequestedRef.current = false;
+    dispatch(getSmartSuggestions());
+    setShowClearConfirm(false);
   };
 
   const handleRateMessage = (messageId, rating) => {
@@ -437,9 +443,9 @@ const ChatBot = () => {
               <div className="suggestions-container">
                 <h5>Try asking about:</h5>
                 <div className="suggestions-grid">
-                  {suggestions.slice(0, 4).map((suggestion, index) => (
+                  {suggestions.slice(0, 4).map((suggestion) => (
                     <button
-                      key={index}
+                      key={suggestion}
                       className="suggestion-button"
                       onClick={() => handleSuggestionClick(suggestion)}
                       disabled={!connected}
@@ -504,6 +510,18 @@ const ChatBot = () => {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showClearConfirm && (
+        <div className="chat-modal-overlay d-flex justify-content-center align-items-center position-fixed top-0 start-0 w-100 h-100" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+          <div className="chat-modal bg-white p-4 rounded shadow-lg text-center" style={{ maxWidth: '300px' }}>
+            <p className="mb-4 text-dark">Clear the chat history?</p>
+            <div className="chat-modal-actions d-flex justify-content-center gap-3">
+              <button className="btn btn-secondary" onClick={() => setShowClearConfirm(false)}>Cancel</button>
+              <button className="btn btn-danger" onClick={confirmClearChat}>Clear</button>
+            </div>
           </div>
         </div>
       )}

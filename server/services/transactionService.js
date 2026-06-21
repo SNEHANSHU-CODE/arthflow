@@ -141,7 +141,8 @@ class TransactionService {
     // Search functionality
     if (isValid(searchTerm)) {
       const searchValue = Array.isArray(searchTerm) ? searchTerm[0] : searchTerm;
-      const searchRegex = new RegExp(searchValue, 'i');
+      const escapedSearch = searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
       query.$or = [
         { description: searchRegex },
         { notes: searchRegex },
@@ -151,7 +152,7 @@ class TransactionService {
 
       // If search term is a number, also search in amount
       if (!isNaN(searchValue)) {
-        query.$or.push({ amount: parseFloat(searchValue) });
+        query.$or.push({ amount: parseFloat(searchValue) }, { amount: -Math.abs(parseFloat(searchValue)) });
       }
     }
 
@@ -222,15 +223,11 @@ class TransactionService {
         updateData.amount = Math.abs(updateData.amount);
       }
 
-      const transaction = await Transaction.findOneAndUpdate(
-        { _id: transactionId, userId },
-        updateData,
-        { new: true, runValidators: true }
-      ).populate('goalId', 'name category');
-
-      if (!transaction) {
-        throw new Error('Transaction not found');
-      }
+      const transaction = await Transaction.findOne({ _id: transactionId, userId });
+      if (!transaction) throw new Error('Transaction not found');
+      Object.assign(transaction, updateData);
+      await transaction.save();
+      await transaction.populate('goalId', 'name category');
 
       return {
         success: true,
@@ -327,18 +324,34 @@ async getCategoryAnalysis(userId) {
       const yearStart = new Date(currentYear, 0, 1);
       const yearEnd = new Date(currentYear, 11, 31);
 
-      const yearlyTransactions = await Transaction.find({
-        userId,
-        date: { $gte: yearStart, $lte: yearEnd }
-      });
+      const [yearlyStats] = await Transaction.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            date: { $gte: yearStart, $lte: yearEnd }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalIncome: {
+              $sum: {
+                $cond: [{ $eq: ['$type', 'Income'] }, '$amount', 0]
+              }
+            },
+            totalExpenses: {
+              $sum: {
+                $cond: [{ $eq: ['$type', 'Expense'] }, { $abs: '$amount' }, 0]
+              }
+            },
+            transactionCount: { $sum: 1 }
+          }
+        }
+      ]);
 
-      const yearlyIncome = yearlyTransactions
-        .filter(t => t.type === 'Income')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const yearlyExpenses = yearlyTransactions
-        .filter(t => t.type === 'Expense')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const yearlyIncome = yearlyStats?.totalIncome || 0;
+      const yearlyExpenses = yearlyStats?.totalExpenses || 0;
+      const transactionCount = yearlyStats?.transactionCount || 0;
 
       return {
         success: true,
@@ -349,7 +362,7 @@ async getCategoryAnalysis(userId) {
             totalIncome: yearlyIncome,
             totalExpenses: yearlyExpenses,
             netSavings: yearlyIncome - yearlyExpenses,
-            transactionCount: yearlyTransactions.length
+            transactionCount: transactionCount
           }
         }
       };
@@ -410,6 +423,19 @@ async getCategoryAnalysis(userId) {
       if (!userExists) throw new Error('User not found');
 
       // Fix amount sign and stamp every doc with userId + import source
+      const escapeHtml = (unsafe) => {
+        return (unsafe || '').replace(/[&<"'>]/g, function (match) {
+          switch (match) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#39;';
+            default: return match;
+          }
+        });
+      };
+
       const docs = transactionsData.map((t) => {
         let amount = parseFloat(t.amount);
         if (t.type === 'Expense' && amount > 0) amount = -Math.abs(amount);
@@ -417,13 +443,13 @@ async getCategoryAnalysis(userId) {
 
         return {
           userId,
-          description:   t.description,
+          description:   t.description ? escapeHtml(t.description) : '',
           amount,
           type:          t.type,
           category:      t.category,
           date:          t.date ? new Date(t.date) : new Date(),
           paymentMethod: t.paymentMethod || 'Other',
-          notes:         t.notes || '',
+          notes:         t.notes ? escapeHtml(t.notes) : '',
           metadata:      { source: 'import' }
         };
       });
@@ -524,9 +550,7 @@ async getCategoryAnalysis(userId) {
   // Migrate guest data to user account
   async migrateGuestData(userId, transactions) {
     try {
-      const migratedTransactions = [];
-
-      for (const guestTransaction of transactions) {
+      const transactionsToInsert = transactions.map(guestTransaction => {
         // Ensure amount has correct sign based on type
         let amount = guestTransaction.amount;
         if (guestTransaction.type === 'Expense' && amount > 0) {
@@ -535,7 +559,7 @@ async getCategoryAnalysis(userId) {
           amount = Math.abs(amount);
         }
 
-        const transaction = new Transaction({
+        return {
           userId,
           description: guestTransaction.description,
           amount,
@@ -547,11 +571,10 @@ async getCategoryAnalysis(userId) {
           tags: guestTransaction.tags,
           isGuestMigrated: true,
           migratedAt: new Date()
-        });
+        };
+      });
 
-        await transaction.save();
-        migratedTransactions.push(transaction);
-      }
+      const migratedTransactions = await Transaction.insertMany(transactionsToInsert);
 
       return {
         success: true,

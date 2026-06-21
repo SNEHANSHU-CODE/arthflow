@@ -53,8 +53,7 @@ export default function Transactions() {
   const [transactionToDelete, setTransactionToDelete] = useState(null);
   const [selectedTransactions, setSelectedTransactions] = useState([]);
   const [formError, setFormError] = useState('');
-  const [localSortBy, setLocalSortBy] = useState('date');
-  const [localSortOrder, setLocalSortOrder] = useState('desc');
+
   const [formData, setFormData] = useState({
     title: "",
     amount: "",
@@ -91,6 +90,19 @@ export default function Transactions() {
       }
     };
   }, [dispatch]);
+
+  // Handle Escape key for modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) resetForm();
+        if (showDeleteModal) cancelDelete();
+        if (showImportModal) setShowImportModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAddModal, showDeleteModal, showImportModal]);
 
   const handleFilterChange = (newFilters) => {
     const transformedFilters = {
@@ -135,8 +147,8 @@ export default function Transactions() {
   };
 
   const getSortIcon = (key) => {
-    if (localSortBy !== key) return <FaSort className="text-muted" />;
-    return localSortOrder === 'asc' ? <FaSortUp /> : <FaSortDown />;
+    if ((filters.sortBy || 'date') !== key) return <FaSort className="text-muted" />;
+    return (filters.sortOrder || 'desc') === 'asc' ? <FaSortUp /> : <FaSortDown />;
   };
 
   const handleSubmit = async (e) => {
@@ -175,7 +187,6 @@ export default function Transactions() {
         limit: pagination.itemsPerPage,
         ...filters
       }));
-      console.log(editingTransaction ? 'Transaction updated successfully' : 'Transaction created successfully');
 
     } catch (error) {
       setFormError(error.message || 'Failed to save transaction');
@@ -259,67 +270,23 @@ export default function Transactions() {
       .toUpperCase() + String(name).slice(1);
   };
 
-  // Client-side sort handler
+  // Server-side sort handler
   const handleSort = (sortBy) => {
     let newSortOrder = 'desc';
 
-    if (localSortBy === sortBy) {
+    if ((filters.sortBy || 'date') === sortBy) {
       // If clicking the same column, toggle order
-      newSortOrder = localSortOrder === 'asc' ? 'desc' : 'asc';
+      newSortOrder = (filters.sortOrder || 'desc') === 'asc' ? 'desc' : 'asc';
     }
 
-    setLocalSortBy(sortBy);
-    setLocalSortOrder(newSortOrder);
+    handleFilterChange({ sortBy, sortOrder: newSortOrder });
   };
 
   const clearAllFilters = () => {
     dispatch(clearFilters());
-    // Reset local sort to default
-    setLocalSortBy('date');
-    setLocalSortOrder('desc');
   };
 
-  // Client-side sorting of transactions
-   const sortedTransactions = React.useMemo(() => {
-    if (!Array.isArray(transactions)) return [];
-    
-    const sorted = [...transactions].sort((a, b) => {
-      let aValue, bValue;
 
-      switch (localSortBy) {
-        case 'date':
-          aValue = new Date(a.date).getTime();
-          bValue = new Date(b.date).getTime();
-          break;
-        case 'amount':
-          // Use absolute values for comparison to sort by magnitude
-          aValue = Math.abs(parseFloat(a.amount) || 0);
-          bValue = Math.abs(parseFloat(b.amount) || 0);
-          break;
-        case 'description':
-          aValue = (a.description || '').toLowerCase();
-          bValue = (b.description || '').toLowerCase();
-          break;
-        default:
-          return 0;
-      }
-
-      // Handle numeric comparison properly
-      if (localSortOrder === 'asc') {
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return aValue - bValue;
-        }
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return bValue - aValue;
-        }
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
-    });
-
-    return sorted;
-  }, [transactions, localSortBy, localSortOrder]);
 
   return (
     <div className="container-fluid p-0">
@@ -456,19 +423,19 @@ export default function Transactions() {
                   <small className="text-muted">Sort by</small>
                   <div className="btn-group btn-group-sm">
                     <button
-                      className={`btn ${localSortBy === 'date' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      className={`btn ${(filters.sortBy || 'date') === 'date' ? 'btn-primary' : 'btn-outline-secondary'}`}
                       onClick={() => handleSort('date')}
                     >
                       Date {getSortIcon('date')}
                     </button>
                     <button
-                      className={`btn ${localSortBy === 'amount' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      className={`btn ${(filters.sortBy || 'date') === 'amount' ? 'btn-primary' : 'btn-outline-secondary'}`}
                       onClick={() => handleSort('amount')}
                     >
                       Amount {getSortIcon('amount')}
                     </button>
                     <button
-                      className={`btn ${localSortBy === 'description' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      className={`btn ${(filters.sortBy || 'date') === 'description' ? 'btn-primary' : 'btn-outline-secondary'}`}
                       onClick={() => handleSort('description')}
                     >
                       Title {getSortIcon('description')}
@@ -490,7 +457,7 @@ export default function Transactions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedTransactions.map((transaction) => (
+                    {transactions.map((transaction) => (
                       <tr key={transaction._id}>
                         <td className="border-0 ps-4">
                           <div className="d-flex align-items-center">
@@ -542,7 +509,7 @@ export default function Transactions() {
                     ))}
                   </tbody>
                 </table>
-                {!loading && sortedTransactions.length === 0 && (
+                {!loading && transactions.length === 0 && (
                   <div className="text-center py-5">
                     <div className="text-muted">
                       <FaSearch size={48} className="mb-3 opacity-50" />
@@ -613,7 +580,7 @@ export default function Transactions() {
 
       {/* Add/Edit Transaction Modal */}
       {showAddModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -734,7 +701,7 @@ export default function Transactions() {
       )}
       {/* Delete Confirmation Modal */}
       {showDeleteModal && transactionToDelete && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">

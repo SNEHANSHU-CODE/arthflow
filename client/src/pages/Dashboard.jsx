@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useSettings } from "../hooks/useSettings";
 
 import { 
@@ -24,98 +24,26 @@ import {
   FaExchangeAlt,
   FaExclamationTriangle
 } from "react-icons/fa";
-import Catagory from "../components/Catagory";
+import Category from "../components/Category";
 import { recentTransactions, fetchDashboardStats, fetchCategoryAnalysis } from "../app/transactionSlice";
 
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings } = useSettings();
   
-  // State management
-  const [recentTransaction, setRecentTransaction] = useState([]);
-  const [categoryData, setCategoryData] = useState([]);
-  const [dashboardData, setDashboardData] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { 
+    dashboardStats: dashboardData = {}, 
+    categoryAnalysis: categoryData = { categories: [] }, 
+    recentTransactions: recentTransaction = [], 
+    loading: isLoading, 
+    error 
+  } = useSelector(state => state.transaction);
 
   useEffect(() => {
-    console.log("Category Data:", categoryData);
-  }, [categoryData]);
-
-
-  // Enhanced useEffect with comprehensive error handling
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Check if dispatch functions exist
-      if (typeof recentTransactions !== 'function') {
-        throw new Error('recentTransactions action is not defined');
-      }
-      if (typeof fetchDashboardStats !== 'function') {
-        throw new Error('fetchDashboardStats action is not defined');
-      }
-      if (typeof fetchCategoryAnalysis !== 'function') {
-        throw new Error('fetchCategoryAnalysis action is not defined');
-      }
-      
-      // Fetch recent transactions
-      const result = await dispatch(recentTransactions()).unwrap();
-      
-      // Validate recent transactions data
-      if (!Array.isArray(result)) {
-        setRecentTransaction([]);
-      } else {
-        setRecentTransaction(result);
-      }
-      
-      // Fetch dashboard stats
-      const dashboard = await dispatch(fetchDashboardStats()).unwrap();
-      
-      // Validate dashboard data structure
-      if (!dashboard || typeof dashboard !== 'object') {
-        setDashboardData({});
-      } else {
-        setDashboardData(dashboard);
-      }
-
-      // Fetch Category data
-      console.log('Fetching category analysis...');
-      const category = await dispatch(fetchCategoryAnalysis()).unwrap();
-      
-      console.log('Category analysis response:', category);
-      console.log('Category type:', typeof category);
-      console.log('Category categories:', category?.categories);
-      
-      // Validate category data structure
-      if (!category || typeof category !== 'object') {
-        console.log('Invalid category data structure');
-        setCategoryData({ categories: [] });
-      } else if (!category.categories || !Array.isArray(category.categories)) {
-        console.log('Missing or invalid categories array');
-        setCategoryData({ ...category, categories: [] });
-      } else {
-        console.log('Valid category data:', category);
-        setCategoryData(category);
-      }
-      
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-      setError(error.message || 'Failed to load dashboard data');
-      
-      // Set empty defaults on error
-      setRecentTransaction([]);
-      setDashboardData({});
-      setCategoryData({ categories: [] });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  fetchData();
-}, [dispatch]);
+    dispatch(recentTransactions());
+    dispatch(fetchDashboardStats());
+    dispatch(fetchCategoryAnalysis());
+  }, [dispatch]);
 
   // Enhanced financial summary with better fallbacks
   const getFinancialSummary = () => {
@@ -148,7 +76,6 @@ useEffect(() => {
   const getCategorySpending = () => {
     
     if (!dashboardData || !dashboardData.monthly || !dashboardData.monthly.breakdowns || !dashboardData.monthly.breakdowns.categories) {
-      console.warn('Missing category data structure');
       return [];
     }
 
@@ -156,16 +83,15 @@ useEffect(() => {
     const totalExpenses = dashboardData.monthly.summary?.totalExpenses || 0;
     
     if (totalExpenses === 0) {
-      console.warn('Total expenses is 0, cannot calculate percentages');
       return [];
     }
     
     return Object.entries(categories)
-      .filter(([_, data]) => data && typeof data === 'object' && data.totalExpenses)
+      .filter(([_, data]) => data && typeof data === 'object' && data.expense > 0)
       .map(([categoryName, data]) => ({
         category: categoryName,
-        amount: data.totalExpenses || 0,
-        percentage: Math.round(((data.totalExpenses || 0) / totalExpenses) * 100),
+        amount: data.expense || 0,
+        percentage: Math.round(((data.expense || 0) / totalExpenses) * 100),
         trend: 0,
         color: getCategoryColor(categoryName)
       }))
@@ -283,8 +209,8 @@ useEffect(() => {
               <h4 className="fw-bold text-primary">{formatCurrency(financialSummary.totalBalance)}</h4>
               <p className="text-muted mb-0">Net Balance</p>
               <small className="text-success">
-                {(dashboardData.monthly?.summary?.netSavings || 0) > 0 ? '+' : ''}
-You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} this month
+                {(dashboardData?.monthly?.summary?.netSavings || 0) > 0 ? '+' : ''}
+You've saved {formatCurrency(dashboardData?.monthly?.summary?.netSavings || 0)} this month
               </small>
             </div>
           </div>
@@ -302,7 +228,7 @@ You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} t
               <p className="text-muted mb-0">Monthly Income</p>
               <small className="text-success">
                 <FaArrowUp size={12} className="me-1" />
-                {dashboardData.monthly?.summary?.transactionCount || 0} transactions
+                {dashboardData?.monthly?.summary?.transactionCount || 0} transactions
               </small>
             </div>
           </div>
@@ -338,7 +264,7 @@ You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} t
               <p className="text-muted mb-0">Savings Rate</p>
               <small className="text-info">
                 <FaChartLine size={12} className="me-1" />
-                {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} saved this month
+                {formatCurrency(dashboardData?.monthly?.summary?.netSavings || 0)} saved this month
               </small>
             </div>
           </div>
@@ -406,8 +332,8 @@ You've saved {formatCurrency(dashboardData.monthly?.summary?.netSavings || 0)} t
         {/* Category Spending & Quick Actions */}
         <div className="col-lg-4">
           {/* Category Spending */}
-          {categoryData?.categories?.length > 0 ? (
-            <Catagory catagoryData={categoryData.categories} />
+          {getCategorySpending().length > 0 ? (
+            <Category categoryData={getCategorySpending()} />
           ) : (
             <div className="card border-0 shadow-sm">
               <div className="card-body text-center text-muted py-4">

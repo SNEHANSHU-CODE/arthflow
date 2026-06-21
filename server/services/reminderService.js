@@ -25,9 +25,9 @@ class ReminderService {
       if (!tokens || !tokens.access_token) {
         console.log('No valid tokens in Redis, checking DB for refresh token...');
         
-        const user = await User.findById(userId);
+        const user = await User.findById(userId).select('+googleRefreshToken');
         if (!user || !user.googleRefreshToken) {
-          throw new Error('Google account not connected. Please connect your Google account first.');
+          return null;
         }
 
         // Use refresh token to get new access token
@@ -68,6 +68,7 @@ class ReminderService {
   async addToGoogleCalendar(userId, reminder) {
     try {
       const calendar = await this.ensureGoogleAccess(userId);
+      if (!calendar) return;
 
       const event = {
         summary: reminder.title,
@@ -102,6 +103,7 @@ class ReminderService {
     
     try {
       const calendar = await this.ensureGoogleAccess(userId);
+      if (!calendar) return;
 
       const updatedEvent = {
         summary: reminder.title,
@@ -134,6 +136,7 @@ class ReminderService {
     
     try {
       const calendar = await this.ensureGoogleAccess(userId);
+      if (!calendar) return;
       await calendar.events.delete({ calendarId: 'primary', eventId });
       console.log(`Deleted event ${eventId} from Google Calendar`);
     } catch (error) {
@@ -240,14 +243,23 @@ class ReminderService {
     const reminders = await this.getUpcomingReminders();
 
     for (const reminder of reminders) {
-      const { userId, title, date, description } = reminder;
+      const { userId, title, date, description, calendarEventId } = reminder;
       if (!userId?.email || !this.shouldSendNow(date)) continue;
       
+      // If handled by Google Calendar, skip sending email
+      if (calendarEventId) {
+        await Reminder.findOneAndUpdate({ _id: reminder._id, isSent: false }, { isSent: true });
+        continue;
+      }
+      
       try {
-        await emailService.sendReminderEmail(userId.email, { title, date, description });
+        const lockedReminder = await Reminder.findOneAndUpdate(
+          { _id: reminder._id, isSent: false },
+          { isSent: true }
+        );
+        if (!lockedReminder) continue;
 
-        // Mark as sent so the next cron tick doesn't re-send it
-        await Reminder.findByIdAndUpdate(reminder._id, { isSent: true });
+        await emailService.sendReminderEmail(userId.email, { title, date, description });
 
         // Fire in-app notification after successful email send
         notificationService.createReminderNotification(userId._id, reminder).catch(err =>

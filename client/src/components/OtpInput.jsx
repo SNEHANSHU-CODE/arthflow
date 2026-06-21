@@ -18,12 +18,7 @@ const OtpInput = ({
     }
   }, [autoFocus, disabled]);
 
-  // Reset OTP when disabled state changes
-  useEffect(() => {
-    if (disabled) {
-      setOtp(new Array(length).fill(''));
-    }
-  }, [disabled, length]);
+  // Intentionally removed useEffect that resets OTP when disabled to prevent empty shells during validation
 
   const handleChange = (element, index) => {
     if (disabled || isNaN(element.value)) return;
@@ -131,7 +126,7 @@ const OtpInput = ({
       <div className="d-flex justify-content-center gap-2 mb-3">
         {otp.map((digit, index) => (
           <input
-            key={index}
+            key={'otp-' + index}
             ref={el => inputRefs.current[index] = el}
             type="text"
             inputMode="numeric"

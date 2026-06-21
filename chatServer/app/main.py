@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 # Security check: Warn about default SECRET_KEY
 if settings.SECRET_KEY == "your-secret-key-change-in-production":
+    if settings.ENVIRONMENT == "production":
+        raise RuntimeError("⚠️  ERROR: Using default SECRET_KEY in production! Change this by setting SECRET_KEY in .env file")
     logger.warning("⚠️  WARNING: Using default SECRET_KEY! Change this in production by setting SECRET_KEY in .env file")
 
 
@@ -84,8 +86,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"⚠️ NotificationPoller initialization failed: {e}")
     
-    # Initialize AI Orchestrator
+    # Initialize AI Orchestrator & Models
     try:
+        from app.ai.llm.init import llm_provider
+        await llm_provider.initialize_models()
+        
         db = Database.get_db()
         orchestrator = await get_orchestrator(db)
         logger.info("✅ AI Orchestrator initialized")
@@ -158,8 +163,11 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="AI-powered financial chat server with MongoDB integration and Socket.IO",
     lifespan=lifespan,
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
 )
+
 
 # Configure CORS
 app.add_middleware(

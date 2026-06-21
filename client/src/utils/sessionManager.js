@@ -26,7 +26,6 @@ export const sessionManager = {
     };
     
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    localStorage.setItem(`${SESSION_KEY}_list`, JSON.stringify([session]));
     
     return session;
   },
@@ -89,7 +88,6 @@ export const sessionManager = {
    */
   destroySession: () => {
     sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(`${SESSION_KEY}_list`);
   },
 
   /**
@@ -216,41 +214,6 @@ export const sessionManager = {
       console.error('Error signing out all sessions:', error);
       return false;
     }
-  },
-
-  /**
-   * Track inactivity
-   * @deprecated Not called anywhere. Session timeout is handled by JWT refresh cycle in axiosConfigs.js. Do NOT activate without coordinating with JWT TTLs.
-   */
-  setupInactivityTracker: (timeout = SESSION_TIMEOUT, onExpire = null) => {
-    let inactivityTimer;
-    
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      sessionManager.updateActivity();
-      
-      inactivityTimer = setTimeout(() => {
-        if (onExpire) onExpire();
-        sessionManager.destroySession();
-      }, timeout);
-    };
-    
-    // Track user activity
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    events.forEach(event => {
-      document.addEventListener(event, resetTimer, true);
-    });
-    
-    // Initial timer
-    resetTimer();
-    
-    // Return cleanup function
-    return () => {
-      clearTimeout(inactivityTimer);
-      events.forEach(event => {
-        document.removeEventListener(event, resetTimer, true);
-      });
-    };
   }
 };
 

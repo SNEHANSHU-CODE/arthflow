@@ -57,8 +57,12 @@ function validateState(state) {
       throw new Error('State has expired');
     }
 
-    // Delete state after validation (one-time use)
-    stateStore.delete(state);
+    if (stateData.used) {
+      throw new Error('State already used');
+    }
+
+    // Mark state as used instead of deleting (allows graceful handling of double requests)
+    stateData.used = true;
 
     return stateData.data;
   } catch (error) {

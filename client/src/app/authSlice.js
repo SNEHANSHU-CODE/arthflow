@@ -1,5 +1,3 @@
-// Selectors
-export const selectAuth = (state) => ({ loading: state.auth.loading, formError: state.auth.formError, oauthError: state.auth.oauthError });
 // Import Google OAuth thunks
 import { initiateGoogleOAuth, handleOAuthCallback } from '../utils/auth/googleAuth';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
@@ -250,6 +248,7 @@ const authSlice = createSlice({
     sessionsError: null,
     mfaPending: false,
     mfaUserId: null,
+    passwordChanged: false,
   },
   reducers: {
     clearError: (state) => {
@@ -337,6 +336,7 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.sessionId = action.payload.sessionId;
         state.authMethod = action.payload.authMethod;
+        state.isInitialized = true;
       })
       .addCase(handleOAuthCallback.rejected, (state, action) => {
         state.loading = false;
@@ -536,6 +536,8 @@ const authSlice = createSlice({
         state.formError = null;
         state.oauthError = null;
         state.preferences = { ...DEFAULT_PREFERENCES };
+        state.passwordChanged = true;
+        state.isInitialized = true;
       })
       .addCase(updateUserPassword.rejected, (state, action) => {
         state.loading = false;
@@ -650,4 +652,5 @@ export const {
 } = authSlice.actions;
 
 export { initiateGoogleOAuth, handleOAuthCallback };
+export const selectAuth = (state) => ({ loading: state.auth.loading, formError: state.auth.formError, oauthError: state.auth.oauthError });
 export default authSlice.reducer;

@@ -31,13 +31,9 @@ export default function Navbar() {
       }
     };
 
-    if (isNavOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (!isNavOpen) return;
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isNavOpen]);
 
   // Handle logout

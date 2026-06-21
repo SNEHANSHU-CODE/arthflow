@@ -250,6 +250,7 @@ class ChatMemory:
                 "provider":     metadata.get("provider"),
                 "isRag":        metadata.get("is_rag", False),
                 "documentName": metadata.get("document_name"),
+                "messageId":    metadata.get("messageId"),
                 "timestamp":    datetime.utcnow(),
             })
         except Exception as e:

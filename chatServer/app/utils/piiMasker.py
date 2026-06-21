@@ -150,18 +150,6 @@ _PATTERNS: List[_PIIPattern] = [
     # MAC address
     _p("MAC_ADDRESS",
        r"\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b"),
-
-    # ── Personal ──────────────────────────────────────────────────────────────
-
-    # Date of birth keywords followed by a date
-    _p("DATE_OF_BIRTH",
-       r"(?:dob|date\s+of\s+birth|birth\s+date)[:\s]+\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}",
-       re.IGNORECASE),
-
-    # Generic date (DD/MM/YYYY, MM-DD-YYYY, YYYY.MM.DD etc.)
-    # Intentionally AFTER DOB so DOB is caught first
-    _p("DATE",
-       r"\b(?:\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})\b"),
 ]
 
 

@@ -43,7 +43,7 @@ import {
   FaSync,
   FaBalanceScale
 } from 'react-icons/fa';
-import LoadingSpinner from '../components/LodingSpinner';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const AnalyticsDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30days');

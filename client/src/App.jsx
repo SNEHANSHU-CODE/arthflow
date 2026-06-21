@@ -4,7 +4,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import PWAManager from './pwa/PWAManager';
 import SettingsProvider from './context/SettingsContext';
 import { fetchUserPreferences, logoutUser } from './app/authSlice';
-import sessionManager from './utils/sessionManager';
 
 import AppRouter from './routes/AppRouter'
 import Navbar from './components/Navbar'
@@ -31,7 +30,7 @@ function App() {
         <PWAManager />
         <ScrollToTop />
         <Navbar />
-        <Chatbot />
+        {isAuthenticated && <Chatbot />}
         <AppRouter />
         <Footer />
       </div>

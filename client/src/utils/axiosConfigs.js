@@ -106,9 +106,6 @@ export const refreshTokenShared = async () => {
         const { clearCredentials } = await import('../app/authSlice');
         const currentStore = await getStore();
         currentStore.dispatch(clearCredentials());
-        if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
-        }
         return Promise.reject(refreshError);
     } finally {
         isRefreshing = false;
@@ -129,6 +126,8 @@ apiClient.interceptors.response.use(
             !originalRequest._retry &&
             !originalRequest.url?.includes('/auth/refresh')
         ) {
+            originalRequest._retry = true;
+
             // BUG 2 FIX: If a refresh is already in progress, queue this request
             // instead of firing another refresh in parallel.
             if (isRefreshing) {
@@ -139,9 +138,6 @@ apiClient.interceptors.response.use(
                     return apiClient(originalRequest);
                 }).catch(err => Promise.reject(err));
             }
-
-            originalRequest._retry = true;
-            isRefreshing = true;
 
             try {
                 const newAccessToken = await refreshTokenShared();
