@@ -54,6 +54,11 @@ export default function Transactions() {
   const [selectedTransactions, setSelectedTransactions] = useState([]);
   const [formError, setFormError] = useState('');
 
+  // Duplicate Check State
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateTransaction, setDuplicateTransaction] = useState(null);
+  const [pendingTransactionData, setPendingTransactionData] = useState(null);
+
   const [formData, setFormData] = useState({
     title: "",
     amount: "",
@@ -98,11 +103,16 @@ export default function Transactions() {
         if (showAddModal) resetForm();
         if (showDeleteModal) cancelDelete();
         if (showImportModal) setShowImportModal(false);
+        if (showDuplicateModal) {
+          setShowDuplicateModal(false);
+          setDuplicateTransaction(null);
+          setPendingTransactionData(null);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAddModal, showDeleteModal, showImportModal]);
+  }, [showAddModal, showDeleteModal, showImportModal, showDuplicateModal]);
 
   const handleFilterChange = (newFilters) => {
     const transformedFilters = {
@@ -151,6 +161,48 @@ export default function Transactions() {
     return (filters.sortOrder || 'desc') === 'asc' ? <FaSortUp /> : <FaSortDown />;
   };
 
+  const checkForDuplicate = (txData) => {
+    const newDateStr = txData.date;
+    const newAmount = parseFloat(txData.amount);
+    const newType = txData.type;
+    const newTitle = (txData.description || '').trim().toLowerCase();
+
+    return transactions.find(t => {
+      const tDateStr = t.date ? t.date.split('T')[0] : '';
+      const tAmount = Math.abs(t.amount);
+      const tTitle = (t.description || '').trim().toLowerCase();
+
+      return (
+        tDateStr === newDateStr &&
+        Math.abs(tAmount - newAmount) < 0.01 &&
+        t.type === newType &&
+        t.category === txData.category &&
+        tTitle === newTitle
+      );
+    });
+  };
+
+  const handleForceAdd = async () => {
+    setShowDuplicateModal(false);
+    setDuplicateTransaction(null);
+    if (!pendingTransactionData) return;
+    
+    try {
+      await dispatch(createTransaction(pendingTransactionData)).unwrap();
+      resetForm();
+      dispatch(fetchTransactions({
+        userId,
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
+        ...filters
+      }));
+    } catch (error) {
+      setFormError(error.message || 'Failed to save transaction');
+    } finally {
+      setPendingTransactionData(null);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -168,6 +220,16 @@ export default function Transactions() {
       date: formData.date,
       notes: formData.description,
     };
+
+    if (!editingTransaction) {
+      const duplicate = checkForDuplicate(transactionData);
+      if (duplicate) {
+        setDuplicateTransaction(duplicate);
+        setPendingTransactionData(transactionData);
+        setShowDuplicateModal(true);
+        return; // Stop here, wait for modal confirmation
+      }
+    }
 
     try {
       if (editingTransaction) {
@@ -205,6 +267,9 @@ export default function Transactions() {
     setEditingTransaction(null);
     setShowAddModal(false);
     setFormError('');
+    setShowDuplicateModal(false);
+    setDuplicateTransaction(null);
+    setPendingTransactionData(null);
   };
 
   const handleEdit = (transaction) => {
@@ -779,6 +844,96 @@ export default function Transactions() {
           </div>
         </div>
       )}
+
+      {/* Duplicate Warning Modal */}
+      {showDuplicateModal && duplicateTransaction && (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-warning">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-warning">
+                  <FaFilter className="me-2" />
+                  Possible Duplicate Detected
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowDuplicateModal(false);
+                    setDuplicateTransaction(null);
+                    setPendingTransactionData(null);
+                  }}
+                  disabled={loading}
+                ></button>
+              </div>
+              <div className="modal-body pt-0">
+                <div className="text-center py-3">
+                  <div className="mb-4">
+                    <div className="bg-warning bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
+                      <FaFilter className="text-warning" size={24} />
+                    </div>
+                    <h6 className="mb-2">A very similar transaction already exists:</h6>
+                    <p className="text-muted mb-0">Are you sure you want to add this again?</p>
+                  </div>
+
+                  {/* Transaction Details Preview */}
+                  <div className="card bg-light border-0">
+                    <div className="card-body py-3">
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="d-flex align-items-center">
+                          <div className={`p-2 rounded me-3 ${duplicateTransaction.type === 'Income'
+                            ? 'bg-success bg-opacity-10'
+                            : 'bg-danger bg-opacity-10'
+                            }`}>
+                            {duplicateTransaction.type === 'Income'
+                              ? <FaArrowUp className="text-success" size={14} />
+                              : <FaArrowDown className="text-danger" size={14} />
+                            }
+                          </div>
+                          <div className="text-start">
+                            <div className="fw-medium">{duplicateTransaction.description}</div>
+                            <small className="text-muted">{tCategory(duplicateTransaction.category)}</small>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <div className={`fw-medium ${duplicateTransaction.amount > 0 ? 'text-success' : 'text-danger'}`}>
+                            {duplicateTransaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(duplicateTransaction.amount))}
+                          </div>
+                          <small className="text-muted">{formatDate(duplicateTransaction.date)}</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowDuplicateModal(false);
+                    setDuplicateTransaction(null);
+                    setPendingTransactionData(null);
+                  }}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  onClick={handleForceAdd}
+                  disabled={loading}
+                >
+                  {loading && <FaSpinner className="fa-spin me-2" />}
+                  Add Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PDF / CSV / Excel Import Modal */}
       {showImportModal && (
         <FileImportModal onClose={() => setShowImportModal(false)} />

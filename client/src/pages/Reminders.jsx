@@ -8,10 +8,13 @@ import { FaSpinner, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { createReminder, fetchReminders, googleConnect, updateReminder, deleteReminder } from '../app/reminderSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { usePreferences } from '../hooks/usePreferences';
+import ToastNotification from '../components/ToastNotification';
+import { useToast } from '../hooks/useToast';
 
 export default function Reminders() {
   const dispatch = useDispatch();
   const { loading, events, error } = useSelector(state => state.reminder);
+  const { toasts, showToast, removeToast } = useToast();
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [reminderText, setReminderText] = useState('');
@@ -32,14 +35,14 @@ export default function Reminders() {
     const errorParam = params.get('error');
     
     if (googleConnected === 'true') {
-      alert('Google Calendar connected successfully!');
+      showToast('Google Calendar connected successfully!', 'success');
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (googleConnected === 'false') {
       const errorMessage = errorParam 
         ? `Failed to connect Google Calendar: ${errorParam}`
         : 'Failed to connect Google Calendar';
-      alert(errorMessage);
+      showToast(errorMessage, 'error');
       console.error('Google connection failed:', errorParam);
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
@@ -52,7 +55,7 @@ export default function Reminders() {
     today.setHours(0, 0, 0, 0);
 
     if (clickedDate < today) {
-      alert('You cannot set reminders for past dates');
+      showToast('You cannot set reminders for past dates', 'warning');
       return;
     }
 
@@ -153,7 +156,7 @@ export default function Reminders() {
       console.log('✅ Google connect result:', result);
     } catch (err) {
       console.error('❌ Google connect error:', err);
-      alert(`Failed to connect Google Calendar: ${err.message || 'Unknown error'}`);
+      showToast(`Failed to connect Google Calendar: ${err.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -346,6 +349,7 @@ export default function Reminders() {
           </div>
         </div>
       )}
+      <ToastNotification toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

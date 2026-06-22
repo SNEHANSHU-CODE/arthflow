@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useAllAnalyticsData } from '../hooks/useAnalyticsGraphQL';
 import { useSettings } from '../hooks/useSettings';
+import { useToast } from '../hooks/useToast';
+import ToastNotification from '../components/ToastNotification';
 import {
   validateDashboard,
   validateSpendingTrends,
@@ -49,6 +51,7 @@ const AnalyticsDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30days');
   const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
+  const { showToast, toasts, removeToast } = useToast();
 
   const accessToken = useSelector((state) => state.auth?.accessToken);
   const { formatCurrency: formatCurrencyFromSettings, formatDate: formatDateFromSettings, isDark, getCurrencySymbol } = useSettings();
@@ -185,7 +188,7 @@ const AnalyticsDashboard = () => {
   const handleExportPDF = async () => {
     try {
       if (!accessToken) {
-        alert('Please login');
+        showToast('Please login to export PDF', 'warning');
         return;
       }
 
@@ -223,7 +226,7 @@ const AnalyticsDashboard = () => {
       window.URL.revokeObjectURL(url_obj);
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      alert(`Failed to download report: ${error.message}`);
+      showToast(`Failed to download report: ${error.message}`, 'error');
     }
   };
 
@@ -1003,6 +1006,7 @@ const AnalyticsDashboard = () => {
           {renderTabContent()}
         </div>
       </div>
+      <ToastNotification toasts={toasts} onClose={removeToast} />
     </div>
   );
 };

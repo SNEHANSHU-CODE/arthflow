@@ -7,6 +7,8 @@ import {
 import { fetchBudget, createBudget, updateBudget } from '../app/budgetSlice';
 import { fetchTransactions } from '../app/transactionSlice';
 import { useSettings } from '../hooks/useSettings';
+import { useToast } from '../hooks/useToast';
+import ToastNotification from '../components/ToastNotification';
 import transactionService from '../services/transactionService';
 
 const MONTH_NAMES = [
@@ -166,10 +168,6 @@ function BudgetChart({ chartData }) {
 }
 
 // ─── BudgetForm ───────────────────────────────────────────────────────────────
-
-// ─── BudgetForm ───────────────────────────────────────────────────────────────
-// Locked to the exact expense categories in the Transaction schema enum.
-// Users toggle categories on/off and set a limit — no free-text, no add/delete.
 const EXPENSE_CATEGORIES = [
   'Food', 'Transportation', 'Shopping', 'Entertainment',
   'Utilities', 'Healthcare', 'Education', 'Travel',
@@ -179,6 +177,7 @@ const EXPENSE_CATEGORIES = [
 function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
   const dispatch = useDispatch();
   const { getCurrencySymbol, formatCurrency } = useSettings();
+  const { showToast } = useToast();
   const { loading } = useSelector(s => s.budget);
 
   const initialLimits = () => {
@@ -288,7 +287,7 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
                       onChange={e => {
                         const val = e.target.value;
                         if (val !== '' && Number(val) < 0) {
-                          alert("Budget limit cannot be less than 0");
+                          showToast("Budget limit cannot be less than 0", "warning");
                           return;
                         }
                         if (val === '0') {
@@ -336,6 +335,7 @@ function BudgetForm({ existingBudget, month, year, onCancel, onSaved }) {
 export default function Budget() {
   const dispatch = useDispatch();
   const { formatCurrency } = useSettings();
+  const { toasts, removeToast } = useToast();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear]   = useState(now.getFullYear());
@@ -482,6 +482,7 @@ export default function Budget() {
           <UnplannedCategories items={unplanned} />
         </>
       )}
+      <ToastNotification toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

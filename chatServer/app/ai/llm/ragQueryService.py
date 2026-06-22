@@ -114,6 +114,31 @@ class RAGQueryService:
             # Fetch large candidate set so post-filter has enough to work with
             num_candidates = min(top_k * 40, 1000)
 
+            # ✅ NEW: Log exact search params for diagnosis
+            logger.info(
+                "🔍 RAG vector search — user_id=%r vault_id=%r top_k=%d num_candidates=%d index=%r",
+                str(user_id), str(vault_id), top_k, num_candidates, settings.VECTOR_INDEX_NAME,
+            )
+
+            # ✅ NEW: Check total embeddings for this user BEFORE running vector search
+            # This tells us if the pipeline stored embeddings correctly
+            try:
+                user_embedding_count = await collection.count_documents({"userId": str(user_id)})
+                logger.info(
+                    "📊 Embeddings in DB for user=%r: %d total",
+                    str(user_id), user_embedding_count,
+                )
+                if vault_id:
+                    vault_embedding_count = await collection.count_documents(
+                        {"userId": str(user_id), "vaultId": str(vault_id)}
+                    )
+                    logger.info(
+                        "📊 Embeddings for vault=%r: %d",
+                        str(vault_id), vault_embedding_count,
+                    )
+            except Exception as count_err:
+                logger.warning("Could not count embeddings for diagnosis: %s", count_err)
+
             pipeline = [
                 {
                     "$vectorSearch": {
@@ -151,14 +176,24 @@ class RAGQueryService:
                     score=doc["score"],
                 ))
 
+            # ✅ NEW: Log post-filter result count
             logger.info(
-                "Vector search returned %d results for user=%s vault=%s",
-                len(results), user_id, vault_id,
+                "✅ Vector search results after post-filter — count=%d user=%r vault=%r",
+                len(results), str(user_id), str(vault_id),
             )
+            if len(results) == 0:
+                logger.warning(
+                    "⚠️  Zero results after post-filter. "
+                    "Check: (1) index name matches Atlas, (2) embeddings exist for this user/vault, "
+                    "(3) numCandidates=%d is enough for cross-user vector space",
+                    num_candidates,
+                )
             return results
 
         except Exception as e:
-            logger.error("Vector search error: %s", e)
+            # ✅ IMPROVED: More specific exception logging
+            logger.error("❌ Vector search FAILED — error=%s type=%s", e, type(e).__name__)
+            logger.error("   index=%r user=%r vault=%r", settings.VECTOR_INDEX_NAME, str(user_id), str(vault_id))
             return []
 
     @staticmethod

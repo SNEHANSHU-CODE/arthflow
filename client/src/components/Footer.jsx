@@ -52,7 +52,7 @@ export default function Footer() {
           <div className="col-md-3">
             <p className="text-uppercase fw-semibold mb-3">Support</p>
             <ul className="list-unstyled">
-              <li><Link to="/service" className="text-light text-decoration-none">Term of Service</Link></li>
+              <li><Link to="/terms" className="text-light text-decoration-none">Term of Service</Link></li>
               <li><Link to="/privacy" className="text-light text-decoration-none">Privacy Policy</Link></li>
               <li><Link to="/developersnote" className="text-light text-decoration-none">Developer's Note</Link></li>
             </ul>

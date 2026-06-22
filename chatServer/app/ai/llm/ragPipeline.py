@@ -132,6 +132,15 @@ class RAGPipeline:
                 for chunk, embedding_vector in zip(chunks, embeddings)
             ]
 
+            # ✅ NEW: Log exact userId and vaultId being written to embeddings collection
+            if embedding_inserts:
+                logger.info(
+                    "📝 Writing embeddings — stored userId=%r stored vaultId=%r count=%d",
+                    embedding_inserts[0].userId,   # Pydantic model field — already a string
+                    embedding_inserts[0].vaultId,  # same
+                    len(embedding_inserts),
+                )
+
             try:
                 inserted_ids = await embedding_storage.insert_batch(embedding_inserts)
                 logger.info("✓ Stored %d embeddings in MongoDB Atlas", len(inserted_ids))

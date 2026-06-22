@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FiUploadCloud, FiTrash2, FiFileText, FiDownload, FiMoreVertical } from 'react-icons/fi';
 import { uploadDocument, deleteDocument, fetchDocumentById } from '../app/vaultSlice';
+import { useToast } from '../hooks/useToast';
+import ToastNotification from '../components/ToastNotification';
 import vaultService from '../services/vaultService';
 import chatService from '../services/chatService';
 
@@ -129,6 +131,7 @@ const styles = `
 export default function VaultItems({ onSelect }) {
   const dispatch = useDispatch();
   const { documents, uploading, activeDocument } = useSelector((s) => s.vault);
+  const { toasts, showToast, removeToast } = useToast();
   const fileRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -140,7 +143,6 @@ export default function VaultItems({ onSelect }) {
     if (file.size > MAX_SIZE) return setUploadError('File exceeds 16 MB limit.');
     try {
       const data = await vaultService.fileToBase64(file);
-      // Strip known extensions cleanly regardless of file type
       const name = file.name.replace(/\.(pdf|csv|xlsx|xls)$/i, '');
       await dispatch(uploadDocument({
         originalName: file.name,
@@ -194,7 +196,7 @@ export default function VaultItems({ onSelect }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert('Download failed. Please try again.');
+      showToast('Download failed. Please try again.', 'error');
     } finally {
       setDownloadingId(null);
     }
@@ -330,6 +332,7 @@ export default function VaultItems({ onSelect }) {
           </div>
         )}
       </div>
+      <ToastNotification toasts={toasts} onClose={removeToast} />
     </>
   );
 }

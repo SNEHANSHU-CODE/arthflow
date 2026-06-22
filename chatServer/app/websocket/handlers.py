@@ -241,6 +241,12 @@ class SocketEventHandlers:
 
             try:
                 if is_authenticated and vault_id:
+                    # ✅ NEW: Log exact user_id and vault_id used for RAG query
+                    logger.info(
+                        "🔒 RAG mode triggered — session user_id=%r vault_id=%r (types: %s / %s)",
+                        str(user_id), str(vault_id), type(user_id).__name__, type(vault_id).__name__,
+                    )
+                    
                     # RAG Mode
                     # Validate Vault Ownership
                     vault = await vault_service.get_by_id(vault_id, user_id=user_id)

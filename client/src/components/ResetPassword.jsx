@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
+import ToastNotification from './ToastNotification';
 import { MdEmail, MdSecurity, MdArrowBack, MdLock, MdVisibility, MdVisibilityOff, MdCheck } from 'react-icons/md';
 import OtpInput from './OtpInput';
 import { setResendAllowed } from '../app/resetPasswordSlice';
@@ -17,6 +20,8 @@ import {
 const ResetPassword = () => {
   // Redux state
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { showToast, toasts, removeToast } = useToast();
   const {
     loading,
     error,
@@ -65,10 +70,8 @@ const ResetPassword = () => {
   // Handle successful password reset with timeout
   useEffect(() => {
     if (passwordResetSuccess) {
-      // Show success message
-      alert('Password reset successfully! You can now login with your new password.');
-
-      // Reset the flow after a short delay
+      showToast('Password reset successfully! You can now login with your new password.', 'success');
+      
       const timeout = setTimeout(() => {
         dispatch(completePasswordReset());
         setEmail('');
@@ -80,11 +83,12 @@ const ResetPassword = () => {
         setOtpError('');
         setResendTimer(0);
         setShowPasswords({ newPassword: false, confirmPassword: false });
-      }, 1000);
+        navigate('/login');
+      }, 2000);
 
       return () => clearTimeout(timeout);
     }
-  }, [passwordResetSuccess, dispatch]);
+  }, [passwordResetSuccess, dispatch, navigate]);
 
   // Start resend timer when email is sent
   useEffect(() => {
@@ -595,6 +599,7 @@ const ResetPassword = () => {
           </div>
         </div>
       </div>
+      <ToastNotification toasts={toasts} onClose={removeToast} />
     </div>
   );
 };

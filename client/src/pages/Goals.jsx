@@ -27,6 +27,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 import goalService from "../services/goalService";
 import { usePreferences } from "../hooks/usePreferences";
+import { useToast } from '../hooks/useToast';
+import ToastNotification from '../components/ToastNotification';
 
 import {
   selectGoals,
@@ -40,6 +42,7 @@ import {
 export default function Goals() {
   const dispatch = useDispatch();
   const { formatCurrency: formatCurrencyPref, formatDate: formatDatePref, getCurrencySymbol } = usePreferences();
+  const { toasts, showToast, removeToast } = useToast();
 
   const auth = useSelector(state => state.auth);
   const userId = useSelector(state => state.auth.user?.userId);
@@ -166,7 +169,7 @@ export default function Goals() {
     // Validate form data
     const validationErrors = goalService.validateGoalData(formData);
     if (validationErrors.length > 0) {
-      alert(validationErrors.join('\n'));
+      showToast(validationErrors[0], 'error');
       return;
     }
 
@@ -907,6 +910,7 @@ export default function Goals() {
           </div>
         </div>
       )}
+      <ToastNotification toasts={toasts} onClose={removeToast} />
     </div>
   );
 }
