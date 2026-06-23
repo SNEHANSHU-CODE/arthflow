@@ -13,7 +13,8 @@ import logging
 from dataclasses import dataclass
 from typing import List, Optional
 
-import fitz  # pymupdf — PDF only
+import fitz  # pymupdf — PDF text rendering for OCR
+import pdfplumber # For accurate text and table extraction
 from app.utils.PdfOcrService import PDFOCRService, OCRError
 import openpyxl  # XLSX
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -95,7 +96,13 @@ class DocumentService:
 
             if mime_type == MIME_PDF:
                 pages = cls._extract_pdf(raw_bytes, original_name, password=password)
-                chunks = cls._chunk_pages(pages, original_name)
+                tabular_pages = [p for p in pages if p.get("is_tabular")]
+                normal_pages = [p for p in pages if not p.get("is_tabular")]
+                chunks = []
+                if normal_pages:
+                    chunks.extend(cls._chunk_pages(normal_pages, original_name))
+                if tabular_pages:
+                    chunks.extend(cls._tabular_to_chunks(tabular_pages, original_name))
             elif mime_type == MIME_CSV:
                 pages = cls._extract_csv(raw_bytes, original_name)
                 chunks = cls._tabular_to_chunks(pages, original_name)
@@ -133,75 +140,70 @@ class DocumentService:
     @staticmethod
     def _extract_pdf(pdf_bytes: bytes, source: str, password: str = "") -> List[dict]:
         """
-        Extract text per page from a PDF.
-
-        Strategy (per page):
-          1. Try pymupdf first — fast, free, works for text-based PDFs.
-          2. If a page yields fewer than OCR_FALLBACK_MIN_CHARS_PER_PAGE
-             characters, treat it as a scanned/image page and run OCR
-             on that page only via PDFOCRService.
-          3. If OCR is unavailable (no API key) or fails, skip the page
-             with a warning rather than crashing the whole document.
-
-        This means a mixed PDF (some text pages, some scanned pages)
-        is handled correctly — each page is judged independently.
+        Extract text and structured tables per page from a PDF using pdfplumber.
         """
         pages = []
         ocr_service: Optional[PDFOCRService] = None
 
         try:
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            doc = pdfplumber.open(io.BytesIO(pdf_bytes), password=password)
         except Exception as e:
-            raise RuntimeError(f"pymupdf failed to open '{source}': {e}") from e
-
-        # Check if PDF is encrypted and we have no password
-        if doc.needs_pass:
-            if password:
-                authenticated = doc.authenticate(password)
-                if not authenticated:
-                    doc.close()
+            if "password" in str(e).lower() or "encrypted" in str(e).lower():
+                if password:
                     raise ValueError("PDF_WRONG_PASSWORD")
-            else:
-                doc.close()
-                raise ValueError("PDF_PASSWORD_PROTECTED")
+                else:
+                    raise ValueError("PDF_PASSWORD_PROTECTED")
+            raise RuntimeError(f"pdfplumber failed to open '{source}': {e}") from e
 
         try:
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                text = page.get_text("text").strip()
+            for page_num, page in enumerate(doc.pages):
+                tables = page.extract_tables()
+                text = page.extract_text() or ""
+                
+                table_texts = []
+                for table in tables:
+                    if not table or not table[0]: continue
+                    clean_table = [[str(cell).strip().replace('\n', ' ') if cell else "" for cell in row] for row in table]
+                    
+                    header = " | ".join(clean_table[0])
+                    separator = " | ".join(["---"] * len(clean_table[0]))
+                    rows = [" | ".join(row) for row in clean_table[1:]]
+                    
+                    md_table = f"| {header} |\n| {separator} |\n"
+                    for row in rows:
+                        md_table += f"| {row} |\n"
+                        
+                    table_texts.append(md_table)
+                    
+                combined_text = text + "\n\n" + "\n\n".join(table_texts)
+                combined_text = combined_text.strip()
 
-                if len(text) >= OCR_FALLBACK_MIN_CHARS_PER_PAGE:
-                    # ✅ Good text extraction — use pymupdf result
-                    pages.append({"page_number": page_num + 1, "text": text})
+                if len(combined_text) >= OCR_FALLBACK_MIN_CHARS_PER_PAGE:
+                    is_tabular = len(tables) > 0
+                    pages.append({"page_number": page_num + 1, "text": combined_text, "is_tabular": is_tabular})
                     continue
 
-                # ⚠️ Page has little/no text — likely scanned image
-                logger.info(
-                    "Page %d of '%s' has only %d chars from pymupdf — attempting OCR fallback",
-                    page_num + 1, source, len(text),
-                )
-
-                # Lazy-init OCR service (only if actually needed)
+                logger.info("Page %d of '%s' has little text — attempting OCR fallback", page_num + 1, source)
+                
                 if ocr_service is None:
                     try:
                         ocr_service = PDFOCRService()
                     except Exception as ocr_init_err:
-                        # OCR not configured (no API key) — skip this page
-                        logger.warning(
-                            "OCR service unavailable for page %d of '%s': %s — skipping page",
-                            page_num + 1, source, ocr_init_err,
-                        )
-                        if text:
-                            # Keep the little pymupdf text we do have
-                            pages.append({"page_number": page_num + 1, "text": text})
+                        logger.warning("OCR service unavailable: %s", ocr_init_err)
+                        if combined_text:
+                            pages.append({"page_number": page_num + 1, "text": combined_text, "is_tabular": False})
                         continue
 
-                # Render the single page to a PDF in memory and send to OCR
                 try:
+                    fitz_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                    if fitz_doc.needs_pass:
+                        fitz_doc.authenticate(password)
+                        
                     single_page_doc = fitz.open()
-                    single_page_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                    single_page_doc.insert_pdf(fitz_doc, from_page=page_num, to_page=page_num)
                     single_page_bytes = single_page_doc.tobytes()
                     single_page_doc.close()
+                    fitz_doc.close()
 
                     ocr_text = ocr_service.extract_text_from_bytes(
                         single_page_bytes,
@@ -209,24 +211,15 @@ class DocumentService:
                     ).strip()
 
                     if ocr_text:
-                        logger.info(
-                            "✅ OCR extracted %d chars from page %d of '%s'",
-                            len(ocr_text), page_num + 1, source,
-                        )
-                        pages.append({"page_number": page_num + 1, "text": ocr_text})
+                        pages.append({"page_number": page_num + 1, "text": ocr_text, "is_tabular": False})
                     else:
-                        logger.warning(
-                            "OCR returned empty text for page %d of '%s' — skipping",
-                            page_num + 1, source,
-                        )
+                        if combined_text:
+                            pages.append({"page_number": page_num + 1, "text": combined_text, "is_tabular": False})
 
-                except OCRError as ocr_err:
-                    logger.warning(
-                        "OCR failed for page %d of '%s': %s — skipping page",
-                        page_num + 1, source, ocr_err,
-                    )
-                    if text:
-                        pages.append({"page_number": page_num + 1, "text": text})
+                except Exception as ocr_err:
+                    logger.warning("OCR failed: %s", ocr_err)
+                    if combined_text:
+                        pages.append({"page_number": page_num + 1, "text": combined_text, "is_tabular": False})
 
         finally:
             doc.close()
@@ -234,10 +227,7 @@ class DocumentService:
                 ocr_service.close()
 
         if not pages:
-            raise ValueError(
-                f"No extractable text found in '{source}'. "
-                "All pages failed both pymupdf extraction and OCR fallback."
-            )
+            raise ValueError(f"No extractable text found in '{source}'.")
         return pages
 
     @staticmethod
@@ -310,38 +300,78 @@ class DocumentService:
     @classmethod
     def _tabular_to_chunks(cls, pages: List[dict], source: str) -> List[TextChunk]:
         """
-        Keeps the entire tabular document as a single large chunk, 
-        and also creates smaller line-by-line chunks for exact row context.
+        Implements dynamic 2x chunking for tables.
+        If a table is larger than 2x the standard chunk size, we split it while
+        attaching the header to every chunk.
         """
         chunks: List[TextChunk] = []
         chunk_index = 0
+        
+        max_table_chunk_size = settings.CHUNK_SIZE * 2
 
         for page in pages:
             masked_text, findings = PIIMasker.mask_with_report(page["text"])
-            if findings:
-                logger.info(
-                    "🔒 PII masked in tabular '%s' page %s — %s",
-                    source,
-                    page.get("page_number", "N/A"),
-                    ", ".join(f"{f.pii_type}×{f.count}" for f in findings),
-                )
             
-            # 1. Add the entire table as one massive chunk
-            chunks.append(TextChunk(
-                text=masked_text,
-                chunk_index=chunk_index,
-                page_number=page.get("page_number"),
-                source=source,
-            ))
-            chunk_index += 1
-            
-            # 2. Add row-level chunks (split by newline since CSV/XLSX uses \n for rows)
             lines = masked_text.split('\n')
-            for line in lines:
-                if not line.strip() or line.startswith('[Sheet:'):
-                    continue
+            if not lines:
+                continue
+                
+            header = ""
+            start_idx = 0
+            for i, line in enumerate(lines):
+                if line.strip() and not line.startswith("[Sheet:") and not line.startswith("| ---"):
+                    header = line
+                    start_idx = i + 1
+                    # Skip the separator line in markdown tables
+                    if len(lines) > start_idx and lines[start_idx].startswith("| ---"):
+                        start_idx += 1
+                    break
+            
+            if len(masked_text) <= max_table_chunk_size:
                 chunks.append(TextChunk(
-                    text=line.strip(),
+                    text=masked_text,
+                    chunk_index=chunk_index,
+                    page_number=page.get("page_number"),
+                    source=source,
+                ))
+                chunk_index += 1
+            else:
+                current_chunk_lines = [header] if header else []
+                current_len = len(header)
+                
+                for line in lines[start_idx:]:
+                    if not line.strip() or line.startswith("| ---"):
+                        continue
+                        
+                    if current_len + len(line) > max_table_chunk_size and len(current_chunk_lines) > 1:
+                        chunks.append(TextChunk(
+                            text="\n".join(current_chunk_lines),
+                            chunk_index=chunk_index,
+                            page_number=page.get("page_number"),
+                            source=source,
+                        ))
+                        chunk_index += 1
+                        current_chunk_lines = [header] if header else []
+                        current_len = len(header)
+                        
+                    current_chunk_lines.append(line)
+                    current_len += len(line) + 1
+                    
+                if len(current_chunk_lines) > (1 if header else 0):
+                    chunks.append(TextChunk(
+                        text="\n".join(current_chunk_lines),
+                        chunk_index=chunk_index,
+                        page_number=page.get("page_number"),
+                        source=source,
+                    ))
+                    chunk_index += 1
+
+            for line in lines:
+                if not line.strip() or line.startswith('[Sheet:') or line.startswith('| ---'):
+                    continue
+                row_text = f"{header}\n{line.strip()}" if header and line.strip() != header else line.strip()
+                chunks.append(TextChunk(
+                    text=row_text,
                     chunk_index=chunk_index,
                     page_number=page.get("page_number"),
                     source=source,

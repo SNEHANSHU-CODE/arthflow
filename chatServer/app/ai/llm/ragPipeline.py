@@ -107,6 +107,17 @@ class RAGPipeline:
 
             # Extract chunk texts before embedding and storing
             chunk_texts = [chunk.text for chunk in chunks]
+            
+            # ✅ PREVENT DUPLICATES: Delete any existing chunks for this vault before generating new ones
+            try:
+                embeddings_col = Database.embeddings_collection()
+                del_result = await embeddings_col.delete_many({"vaultId": str(vault_id)})
+                if del_result.deleted_count > 0:
+                    logger.info("🧹 Deleted %d existing chunks for vault %s to prevent duplicates", del_result.deleted_count, vault_id)
+            except Exception as e:
+                logger.error("Failed to delete existing chunks for vault %s: %s", vault_id, e)
+                return False
+
             try:
                 embeddings = await EmbeddingService.embed_chunks(chunk_texts)
                 if len(embeddings) != len(chunks):

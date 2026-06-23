@@ -30,7 +30,7 @@ function App() {
         <PWAManager />
         <ScrollToTop />
         <Navbar />
-        {isAuthenticated && <Chatbot />}
+        <Chatbot />
         <AppRouter />
         <Footer />
       </div>

@@ -53,8 +53,9 @@ class RAGQueryService:
             # 1. Embed the masked query
             query_vector = await EmbeddingService.embed_query(masked_query)
 
-            # 2. Vector search in Atlas
-            results = await cls._vector_search(
+            # 2. Hybrid Search + Reranking
+            results, top_score = await cls._hybrid_search_and_rerank(
+                query=query,
                 query_vector=query_vector,
                 user_id=user_id,
                 vault_id=vault_id,
@@ -76,7 +77,6 @@ class RAGQueryService:
                     ", ".join(f"{f.pii_type}×{f.count}" for f in ctx_findings),
                 )
             document_name = results[0].source
-            top_score = results[0].score  # already sorted by relevance from Atlas
 
             logger.info(
                 "RAG retrieved %d chunks (vault=%s, top_score=%.3f)",
@@ -89,55 +89,22 @@ class RAGQueryService:
             return "", "Unknown Document", 0.0
 
     @classmethod
-    async def _vector_search(
+    async def _vector_search_filtered(
         cls,
         query_vector: list,
         user_id: str,
         vault_id: Optional[str],
         top_k: int,
     ) -> list[EmbeddingSearchResult]:
-        """Run $vectorSearch aggregation on Atlas.
-
-        NOTE: Atlas M0 free tier does NOT support inline `filter` inside
-        $vectorSearch (requires M2+ with filter fields declared in the index).
-        We fetch a larger candidate set then apply $match as a regular pipeline
-        stage so string userId/vaultId fields are compared correctly.
-        """
+        """Run $vectorSearch aggregation with embedded filter for high efficiency."""
         try:
             collection = Database.embeddings_collection()
 
-            # userId and vaultId are stored as plain strings (not ObjectId)
-            post_filter: dict = {"userId": str(user_id)}
+            pre_filter: dict = {"userId": {"$eq": str(user_id)}}
             if vault_id:
-                post_filter["vaultId"] = str(vault_id)
+                pre_filter["vaultId"] = {"$eq": str(vault_id)}
 
-            # Fetch large candidate set so post-filter has enough to work with
-            num_candidates = min(top_k * 40, 1000)
-
-            # ✅ NEW: Log exact search params for diagnosis
-            logger.info(
-                "🔍 RAG vector search — user_id=%r vault_id=%r top_k=%d num_candidates=%d index=%r",
-                str(user_id), str(vault_id), top_k, num_candidates, settings.VECTOR_INDEX_NAME,
-            )
-
-            # ✅ NEW: Check total embeddings for this user BEFORE running vector search
-            # This tells us if the pipeline stored embeddings correctly
-            try:
-                user_embedding_count = await collection.count_documents({"userId": str(user_id)})
-                logger.info(
-                    "📊 Embeddings in DB for user=%r: %d total",
-                    str(user_id), user_embedding_count,
-                )
-                if vault_id:
-                    vault_embedding_count = await collection.count_documents(
-                        {"userId": str(user_id), "vaultId": str(vault_id)}
-                    )
-                    logger.info(
-                        "📊 Embeddings for vault=%r: %d",
-                        str(vault_id), vault_embedding_count,
-                    )
-            except Exception as count_err:
-                logger.warning("Could not count embeddings for diagnosis: %s", count_err)
+            num_candidates = max(top_k * 10, 100)
 
             pipeline = [
                 {
@@ -146,12 +113,10 @@ class RAGQueryService:
                         "path": "embedding",
                         "queryVector": query_vector,
                         "numCandidates": num_candidates,
-                        "limit": num_candidates,   # get all candidates, filter after
+                        "limit": top_k,
+                        "filter": pre_filter
                     }
                 },
-                # Post-filter by userId (and optionally vaultId) — plain string match
-                {"$match": post_filter},
-                {"$limit": top_k},
                 {
                     "$project": {
                         "vaultId": 1,
@@ -175,26 +140,133 @@ class RAGQueryService:
                     pageNumber=doc.get("pageNumber"),
                     score=doc["score"],
                 ))
-
-            # ✅ NEW: Log post-filter result count
-            logger.info(
-                "✅ Vector search results after post-filter — count=%d user=%r vault=%r",
-                len(results), str(user_id), str(vault_id),
-            )
-            if len(results) == 0:
-                logger.warning(
-                    "⚠️  Zero results after post-filter. "
-                    "Check: (1) index name matches Atlas, (2) embeddings exist for this user/vault, "
-                    "(3) numCandidates=%d is enough for cross-user vector space",
-                    num_candidates,
-                )
             return results
 
         except Exception as e:
-            # ✅ IMPROVED: More specific exception logging
-            logger.error("❌ Vector search FAILED — error=%s type=%s", e, type(e).__name__)
-            logger.error("   index=%r user=%r vault=%r", settings.VECTOR_INDEX_NAME, str(user_id), str(vault_id))
+            logger.error("❌ Vector search FAILED: %s", e)
             return []
+
+    @classmethod
+    async def _text_search(
+        cls,
+        query: str,
+        user_id: str,
+        vault_id: Optional[str],
+        top_k: int,
+    ) -> list[EmbeddingSearchResult]:
+        """Run standard BM25 Atlas Search."""
+        try:
+            collection = Database.embeddings_collection()
+            
+            must_clauses = [{"equals": {"path": "userId", "value": str(user_id)}}]
+            if vault_id:
+                must_clauses.append({"equals": {"path": "vaultId", "value": str(vault_id)}})
+                
+            pipeline = [
+                {
+                    "$search": {
+                        "index": "default",
+                        "compound": {
+                            "must": [
+                                {"text": {"query": query, "path": "text"}},
+                            ],
+                            "filter": must_clauses
+                        }
+                    }
+                },
+                {"$limit": top_k},
+                {
+                    "$project": {
+                        "vaultId": 1,
+                        "userId": 1,
+                        "chunkIndex": 1,
+                        "text": 1,
+                        "source": 1,
+                        "pageNumber": 1,
+                        "score": {"$meta": "searchScore"},
+                    }
+                }
+            ]
+
+            results = []
+            async for doc in collection.aggregate(pipeline):
+                results.append(EmbeddingSearchResult(
+                    vaultId=str(doc["vaultId"]),
+                    chunkIndex=doc["chunkIndex"],
+                    text=doc["text"],
+                    source=doc["source"],
+                    pageNumber=doc.get("pageNumber"),
+                    score=doc["score"],
+                ))
+            return results
+        except Exception as e:
+            logger.warning("BM25 Text Search failed (check if 'default' search index exists): %s", e)
+            return []
+
+    @classmethod
+    async def _hybrid_search_and_rerank(
+        cls,
+        query: str,
+        query_vector: list,
+        user_id: str,
+        vault_id: Optional[str],
+        top_k: int = 5,
+    ) -> tuple[list[EmbeddingSearchResult], float]:
+        import asyncio
+        fetch_k = max(top_k, 10)
+        
+        vector_task = asyncio.create_task(cls._vector_search_filtered(query_vector, user_id, vault_id, fetch_k))
+        text_task = asyncio.create_task(cls._text_search(query, user_id, vault_id, fetch_k))
+        
+        try:
+            vector_results, text_results = await asyncio.gather(vector_task, text_task)
+        except Exception as e:
+            logger.error("Hybrid search failed: %s", e)
+            vector_results, text_results = [], []
+            
+        if not vector_results and not text_results:
+            return [], 0.0
+            
+        chunks_map = {}
+        rrf_scores = {}
+        k_const = 60
+        
+        max_vector_score = vector_results[0].score if vector_results else 0.0
+        
+        for rank, res in enumerate(vector_results):
+            cid = f"{res.vaultId}_{res.chunkIndex}"
+            chunks_map[cid] = res
+            rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 1.0 / (k_const + rank + 1)
+            
+        for rank, res in enumerate(text_results):
+            cid = f"{res.vaultId}_{res.chunkIndex}"
+            chunks_map[cid] = res
+            rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 1.0 / (k_const + rank + 1)
+            
+        sorted_cids = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+        
+        final_results = []
+        if not sorted_cids:
+            return [], 0.0
+            
+        top_rrf = rrf_scores[sorted_cids[0]]
+        threshold = top_rrf * 0.5
+        
+        for i, cid in enumerate(sorted_cids):
+            if i < 2:
+                final_results.append(chunks_map[cid])
+            elif i < 5:
+                if rrf_scores[cid] >= threshold:
+                    final_results.append(chunks_map[cid])
+                else:
+                    break
+            else:
+                break
+                
+        if not vector_results and text_results:
+            max_vector_score = 0.99
+            
+        return final_results, max_vector_score
 
     @staticmethod
     def _format_context(results: list[EmbeddingSearchResult]) -> str:
