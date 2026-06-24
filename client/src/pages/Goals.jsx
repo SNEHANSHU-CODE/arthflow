@@ -582,7 +582,7 @@ export default function Goals() {
 
       {/* Add/Edit Goal Modal */}
       {showAddModal && (
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -694,7 +694,7 @@ export default function Goals() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && goalToDelete && (
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">
@@ -712,100 +712,64 @@ export default function Goals() {
                   disabled={loading}
                 ></button>
               </div>
-              <div className="modal-body pt-0">
-                <div className="text-center py-3">
-                  <div className="mb-4">
-                    <div className="bg-danger bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
-                      <FaTrash className="text-danger" size={32} />
+              <div className="modal-body pt-2 pb-0">
+                <div className="mb-3">
+                  <p className="text-muted mb-0">Are you sure you want to delete this goal? This action cannot be undone.</p>
+                </div>
+
+                {/* Goal Details Preview */}
+                <div className="card bg-light border-0">
+                  <div className="card-body py-2">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center">
+                        <div className="p-1 rounded me-2 bg-primary bg-opacity-10">
+                          {getStatusIcon(goalToDelete)}
+                        </div>
+                        <div className="text-start">
+                          <div className="fw-medium" style={{ fontSize: '14px' }}>{goalToDelete.name}</div>
+                          <small className="text-muted" style={{ fontSize: '12px' }}>{goalToDelete.category}</small>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="fw-medium text-primary" style={{ fontSize: '14px' }}>
+                          {formatCurrency(goalToDelete.targetAmount)}
+                        </div>
+                      </div>
                     </div>
-                    <h6 className="mb-2">Delete Goal?</h6>
-                    <p className="text-muted mb-0">This action cannot be undone</p>
-                  </div>
 
-                  {/* Goal Details Preview */}
-                  <div className="card bg-light border-0">
-                    <div className="card-body py-3">
-                      <div className="d-flex align-items-center justify-content-between mb-3">
-                        <div className="d-flex align-items-center">
-                          <div className="p-2 rounded me-3 bg-primary bg-opacity-10">
-                            {getStatusIcon(goalToDelete)}
-                          </div>
-                          <div className="text-start">
-                            <div className="fw-medium">{goalToDelete.name}</div>
-                            <small className="text-muted">{goalToDelete.category}</small>
-                          </div>
-                        </div>
-                        <div className="text-end">
-                          <div className="fw-medium text-primary">
-                            {formatCurrency(goalToDelete.targetAmount)}
-                          </div>
-                          <small className="text-muted">
-                            Target Date: {formatDate(goalToDelete.targetDate)}
-                          </small>
-                        </div>
-                      </div>
-
-                      {/* Progress Bar */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span className="text-muted small">Current Progress</span>
-                          <span className="fw-medium small">
-                            {getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="progress" style={{ height: '6px' }}>
-                          <div
-                            className={`progress-bar bg-${getProgressColor(
-                              getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount)
-                            )}`}
-                            style={{
-                              width: `${Math.min(
-                                getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount),
-                                100
-                              )}%`
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Amount Details */}
-                      <div className="row g-2">
-                        <div className="col-6">
-                          <div className="text-center p-2 bg-success bg-opacity-10 rounded">
-                            <div className="fw-bold text-success small">
-                              {formatCurrency(goalToDelete.savedAmount || 0)}
-                            </div>
-                            <small className="text-muted">Saved</small>
-                          </div>
-                        </div>
-                        <div className="col-6">
-                          <div className="text-center p-2 bg-warning bg-opacity-10 rounded">
-                            <div className="fw-bold text-warning small">
-                              {formatCurrency(goalToDelete.targetAmount - (goalToDelete.savedAmount || 0))}
-                            </div>
-                            <small className="text-muted">Remaining</small>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Priority Badge */}
-                      <div className="mt-3 text-center">
-                        <span className={`badge bg-${priorityColors[goalToDelete.priority]} bg-opacity-10 text-${priorityColors[goalToDelete.priority]} text-capitalize`}>
-                          {goalToDelete.priority} Priority
+                    {/* Progress Bar */}
+                    <div>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="text-muted" style={{ fontSize: '12px' }}>Current Progress</span>
+                        <span className="fw-medium" style={{ fontSize: '12px' }}>
+                          {getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount).toFixed(1)}%
                         </span>
                       </div>
+                      <div className="progress" style={{ height: '6px' }}>
+                        <div
+                          className={`progress-bar bg-${getProgressColor(
+                            getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount)
+                          )}`}
+                          style={{
+                            width: `${Math.min(
+                              getProgressPercentage(goalToDelete.savedAmount, goalToDelete.targetAmount),
+                              100
+                            )}%`
+                          }}
+                        ></div>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Warning Message */}
-                  {goalToDelete.savedAmount > 0 && (
-                    <div className="alert alert-warning mt-3 mb-0">
-                      <small>
-                        <strong>Warning:</strong> You will lose {formatCurrency(goalToDelete.savedAmount)} in savings if you delete this goal.
-                      </small>
-                    </div>
-                  )}
                 </div>
+
+                {/* Warning Message */}
+                {goalToDelete.savedAmount > 0 && (
+                  <div className="alert alert-warning mt-3 mb-3 py-2">
+                    <small>
+                      <strong>Warning:</strong> You will lose {formatCurrency(goalToDelete.savedAmount)} in savings if you delete this goal.
+                    </small>
+                  </div>
+                )}
               </div>
 
               <div className="modal-footer border-0 pt-0">
@@ -833,7 +797,6 @@ export default function Goals() {
                     </>
                   ) : (
                     <>
-                      <FaTrash className="me-2" />
                       Delete Goal
                     </>
                   )}
@@ -846,7 +809,7 @@ export default function Goals() {
 
       {/* Add Funds Modal */}
       {showAddFundsModal && selectedGoal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className="modal-content">
               <div className="modal-header">

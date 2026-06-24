@@ -1,5 +1,10 @@
 from pydantic_settings import BaseSettings
 from typing import Optional, List
+from dotenv import load_dotenv
+import os
+
+# Force .env file to override global Windows System Variables
+load_dotenv(override=True)
 
 
 class Settings(BaseSettings):

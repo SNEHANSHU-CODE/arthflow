@@ -532,17 +532,8 @@ Response Structure:
             messages, llm, provider, memory, metadata = await self.prepare_rag_query(query, user_id, vault_id, provider)
 
             if metadata.get("no_match", False):
-                return {
-                    "status": "success",
-                    "user_id": user_id,
-                    "is_authenticated": True,
-                    "is_rag": True,
-                    "document_name": metadata.get("document_name", ""),
-                    "provider": "informational",
-                    "query": query,
-                    "response": "I don't see any record of that in the provided document.",
-                    "timestamp": datetime.now().isoformat(),
-                }
+                logger.info("RAG no_match for query '%s', falling back to DB profile.", query)
+                return await self.process_authenticated_query(user_id, query, provider)
             
             if not metadata.get("is_rag", False):
                 return await self.process_authenticated_query(user_id, query, provider)

@@ -270,9 +270,13 @@ class SocketEventHandlers:
                         **rag_metadata
                     }
                     if rag_metadata.get("no_match"):
-                        is_static_guest_response = True
-                        static_guest_text = "I don't see any record of that in the provided document."
-                        provider = "informational"
+                        logger.info("RAG no_match for query '%s', falling back to DB profile in websocket.", masked_msg)
+                        messages, llm, provider, memory = await orchestrator.prepare_authenticated_query(
+                            user_id=user_id,
+                            query=masked_msg,
+                            currency_symbol=currency_symbol,
+                        )
+                        metadata = {"response_type": "authenticated"}
                     elif not rag_metadata.get("is_rag", True):
                         metadata["response_type"] = "authenticated"
                 elif is_authenticated:

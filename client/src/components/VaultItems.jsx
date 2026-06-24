@@ -136,6 +136,7 @@ export default function VaultItems({ onSelect }) {
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [downloadingId, setDownloadingId] = useState(null);
+  const [documentToDelete, setDocumentToDelete] = useState(null);
 
   const handleFile = async (file) => {
     setUploadError('');
@@ -169,9 +170,16 @@ export default function VaultItems({ onSelect }) {
     onSelect?.(doc);
   };
 
-  const handleDelete = (e, id) => {
+  const handleDelete = (e, doc) => {
     e.stopPropagation();
-    if (window.confirm('Delete this document?')) dispatch(deleteDocument(id));
+    setDocumentToDelete(doc);
+  };
+
+  const confirmDelete = () => {
+    if (documentToDelete) {
+      dispatch(deleteDocument(documentToDelete._id));
+      setDocumentToDelete(null);
+    }
   };
 
   const handleDownload = async (e, doc) => {
@@ -312,7 +320,7 @@ export default function VaultItems({ onSelect }) {
                     <button
                       className="vault-action-btn"
                       style={{ color: '#c5221f' }}
-                      onClick={(e) => handleDelete(e, doc._id)}
+                      onClick={(e) => handleDelete(e, doc)}
                       title="Delete"
                     >
                       <FiTrash2 size={16} />
@@ -332,6 +340,77 @@ export default function VaultItems({ onSelect }) {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {documentToDelete && (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-danger">
+                  <FiTrash2 className="me-2" />
+                  Delete Document
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setDocumentToDelete(null)}
+                ></button>
+              </div>
+              <div className="modal-body pt-0">
+                <div className="text-center py-3">
+                  <div className="mb-4">
+                    <div className="bg-danger bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
+                      <FiTrash2 className="text-danger" size={24} />
+                    </div>
+                    <h6 className="mb-2">Are you sure?</h6>
+                    <p className="text-muted mb-0">This action cannot be undone</p>
+                  </div>
+
+                  {/* Document Details Preview */}
+                  <div className="card bg-light border-0">
+                    <div className="card-body py-3">
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="d-flex align-items-center">
+                          <div className="vault-doc-icon me-3" style={{ background: getFileType(documentToDelete.mimeType).bg, width: '36px', height: '42px' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 700, color: getFileType(documentToDelete.mimeType).color, letterSpacing: '0.5px', zIndex: 1 }}>
+                              {getFileType(documentToDelete.mimeType).label}
+                            </span>
+                          </div>
+                          <div className="text-start">
+                            <div className="fw-medium text-truncate" style={{ maxWidth: '150px' }}>{documentToDelete.name}</div>
+                            <small className="text-muted">{formatSize(documentToDelete.size)}</small>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <small className="text-muted">{formatDate(documentToDelete.createdAt)}</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-light"
+                  onClick={() => setDocumentToDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={confirmDelete}
+                >
+                  Delete Document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastNotification toasts={toasts} onClose={removeToast} />
     </>
   );

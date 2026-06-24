@@ -366,17 +366,7 @@ class DocumentService:
                     ))
                     chunk_index += 1
 
-            for line in lines:
-                if not line.strip() or line.startswith('[Sheet:') or line.startswith('| ---'):
-                    continue
-                row_text = f"{header}\n{line.strip()}" if header and line.strip() != header else line.strip()
-                chunks.append(TextChunk(
-                    text=row_text,
-                    chunk_index=chunk_index,
-                    page_number=page.get("page_number"),
-                    source=source,
-                ))
-                chunk_index += 1
+
 
         return chunks
 
