@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaShieldAlt, FaCalendarAlt, FaDollarSign, FaLock, FaUserShield, FaEnvelope } from 'react-icons/fa';
 
-const PrivacyPolicy = () => {
+const AppPrivacy = () => {
   return (
     <div className="container-fluid bg-light min-vh-100 nav-top-margin">
       <div className="container py-5">
@@ -252,4 +252,4 @@ const PrivacyPolicy = () => {
   );
 };
 
-export default PrivacyPolicy;
+export default AppPrivacy;

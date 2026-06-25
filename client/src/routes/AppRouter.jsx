@@ -12,7 +12,7 @@ import DashboardHome from '../pages/DashboardHome';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ResetPassword from '../components/ResetPassword';
 import DevelopersNote from '../components/DevelopersNote';
-import PrivacyPolicy from '../components/PrivacyPolicy';
+import AppPrivacy from '../components/AppPrivacy';
 import TermsOfService from '../components/TermOfService';
 
 
@@ -54,7 +54,7 @@ export default function AppRouter() {
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             <Route path="/resetpassword" element={<PublicRoute><ResetPassword /></PublicRoute>} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/privacy" element={<AppPrivacy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/developersnote" element={<DevelopersNote />} />
 

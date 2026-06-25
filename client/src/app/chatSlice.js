@@ -405,6 +405,16 @@ const chatSlice = createSlice({
 
       .addCase(loadChatHistory.rejected, () => {
         // Silent fail — history just won't load, not a critical error
+      })
+      
+      // Clear chat state on logout
+      .addCase('auth/logout/fulfilled', (state) => {
+        state.messages = [];
+        state.error = null;
+        state.isTyping = false;
+        state.loading = false;
+        state.lastMessageId = null;
+        state.sessionStats = { ...initialState.sessionStats };
       });
   },
 });

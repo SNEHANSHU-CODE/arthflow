@@ -408,6 +408,50 @@ class SocketEventHandlers:
                         else:
                             raise stream_error
 
+                # --- Seamless Pivot Fallback Logic ---
+                if metadata.get("response_type") == "rag" and "couldn't find that in the document" in accumulated_text.lower():
+                    logger.info("RAG LLM stream failed to find info. Pivoting to DB fallback...")
+                    
+                    transition_text = "\n\n*Let me check your personal account data...*\n\n"
+                    accumulated_text += transition_text
+                    
+                    await self.sio.emit('bot_response_chunk', {
+                        "messageId": message_id,
+                        "chunk": transition_text,
+                        "isFirst": False,
+                        "isLast": False,
+                        "provider": provider,
+                        "metadata": None,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }, room=sid)
+                    
+                    # Fetch DB context
+                    db_messages, db_llm, db_provider, db_memory = await orchestrator.prepare_authenticated_query(
+                        user_id=user_id,
+                        query=masked_msg,
+                        currency_symbol=currency_symbol,
+                    )
+                    
+                    # Stream DB response into the same bubble
+                    try:
+                        async for chunk in db_llm.astream(db_messages):
+                            token = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                            accumulated_text += token
+                            await self.sio.emit('bot_response_chunk', {
+                                "messageId": message_id,
+                                "chunk": token,
+                                "isFirst": False,
+                                "isLast": False,
+                                "provider": db_provider,
+                                "metadata": None,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            }, room=sid)
+                        provider = db_provider
+                        metadata["response_type"] = "authenticated_fallback"
+                    except Exception as fallback_stream_err:
+                        logger.error(f"Fallback stream during pivot failed: {fallback_stream_err}")
+                # ------------------------------------
+
                 # Save complete messages to MongoDB
                 if is_authenticated and memory:
                     await memory.add_message(masked_msg, message_type="human")

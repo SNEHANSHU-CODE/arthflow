@@ -348,9 +348,10 @@ class PdfReportService {
     const currentMonthSummary = currentMonth?.summary || {};
 
     return {
+      columnGap: 20,
       columns: [
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Period Overview', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -370,7 +371,7 @@ class PdfReportService {
           ]
         },
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Current Month', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -454,9 +455,10 @@ class PdfReportService {
     ]);
 
     return {
+      columnGap: 20,
       columns: [
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Monthly Trends', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -478,7 +480,7 @@ class PdfReportService {
           ]
         },
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Category Breakdown', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -518,9 +520,10 @@ class PdfReportService {
     return {
       stack: [
         {
+          columnGap: 20,
           columns: [
             {
-              width: '50%',
+              width: '*',
               stack: [
                 { text: 'Monthly Income Trends', style: 'subHeading', margin: [0, 0, 0, 8] },
                 {
@@ -540,7 +543,7 @@ class PdfReportService {
               ]
             },
             {
-              width: '50%',
+              width: '*',
               stack: [
                 { text: 'Summary Statistics', style: 'subHeading', margin: [0, 0, 0, 8] },
                 {
@@ -583,9 +586,10 @@ class PdfReportService {
     return {
       stack: [
         {
+          columnGap: 20,
           columns: [
             {
-              width: '50%',
+              width: '*',
               stack: [
                 { text: 'Monthly Savings', style: 'subHeading', margin: [0, 0, 0, 8] },
                 {
@@ -606,7 +610,7 @@ class PdfReportService {
               ]
             },
             {
-              width: '50%',
+              width: '*',
               stack: [
                 { text: 'Savings Metrics', style: 'subHeading', margin: [0, 0, 0, 8] },
                 {
@@ -655,9 +659,10 @@ class PdfReportService {
     return {
       stack: [
         {
+          columnGap: 20,
           columns: [
             {
-              width: '40%',
+              width: '*',
               stack: [
                 { text: 'Summary', style: 'subHeading', margin: [0, 0, 0, 8] },
                 {
@@ -677,7 +682,7 @@ class PdfReportService {
               ]
             },
             {
-              width: '60%',
+              width: '*',
               stack: [
                 { text: 'Goals List', style: 'subHeading', margin: [0, 0, 0, 8] },
                 {
@@ -779,9 +784,10 @@ class PdfReportService {
     } = transactionInsights;
 
     return {
+      columnGap: 20,
       columns: [
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Transaction Statistics', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -801,7 +807,7 @@ class PdfReportService {
           ]
         },
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Extremes', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -843,9 +849,10 @@ class PdfReportService {
     ]);
 
     return {
+      columnGap: 20,
       columns: [
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Month Overview', style: 'subHeading', margin: [0, 0, 0, 8] },
             {
@@ -865,7 +872,7 @@ class PdfReportService {
           ]
         },
         {
-          width: '50%',
+          width: '*',
           stack: [
             { text: 'Expense Categories', style: 'subHeading', margin: [0, 0, 0, 8] },
             {

@@ -550,6 +550,13 @@ Response Structure:
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
+            
+            # Check if LLM explicitly said it couldn't find the answer
+            lower_resp = response_text.lower()
+            if "couldn't find" in lower_resp or "not find" in lower_resp or "not found" in lower_resp:
+                logger.info("RAG LLM couldn't find the answer, falling back to DB profile.")
+                return await self.process_authenticated_query(user_id, query, provider)
+
             # Step 5: Message persistence is now handled strictly by the calling handler
             # (e.g. websocket handlers.py)
             logger.info("✅ RAG response generated for user %s", user_id)
