@@ -58,6 +58,9 @@ export default function Transactions() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateTransaction, setDuplicateTransaction] = useState(null);
   const [pendingTransactionData, setPendingTransactionData] = useState(null);
+  
+  // Local state for search to prevent typing issues
+  const [localSearchTerm, setLocalSearchTerm] = useState(filters.searchTerm || '');
 
   const [formData, setFormData] = useState({
     title: "",
@@ -114,6 +117,11 @@ export default function Transactions() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showAddModal, showDeleteModal, showImportModal, showDuplicateModal]);
 
+  // Sync local search term if redux state is cleared/updated externally
+  useEffect(() => {
+    setLocalSearchTerm(filters.searchTerm || '');
+  }, [filters.searchTerm]);
+
   const handleFilterChange = (newFilters) => {
     const transformedFilters = {
       ...filters,
@@ -144,8 +152,8 @@ export default function Transactions() {
   // Direct search handler with timeout
   const handleSearch = (e) => {
     const searchTerm = e.target.value;
+    setLocalSearchTerm(searchTerm); // Instantly update local input
 
-    // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
@@ -153,7 +161,7 @@ export default function Transactions() {
     // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       handleFilterChange({ searchTerm });
-    }, 200);
+    }, 500);
   };
 
   const getSortIcon = (key) => {
@@ -412,7 +420,7 @@ export default function Transactions() {
                       type="text"
                       className="form-control border-start-0"
                       placeholder="Search transactions"
-                      value={filters.searchTerm || ''}
+                      value={localSearchTerm}
                       onChange={handleSearch}
                     />
                   </div>

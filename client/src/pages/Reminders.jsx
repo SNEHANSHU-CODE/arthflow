@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { usePreferences } from '../hooks/usePreferences';
 import ToastNotification from '../components/ToastNotification';
 import { useToast } from '../hooks/useToast';
+import reminderService from '../services/reminderService';
 
 export default function Reminders() {
   const dispatch = useDispatch();
@@ -25,20 +26,36 @@ export default function Reminders() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+
+  // Check Google connection status on mount
+  useEffect(() => {
+    const checkGoogle = async () => {
+      try {
+        const result = await reminderService.checkGoogleConnection();
+        setGoogleConnected(result.connected || false);
+      } catch (err) {
+        console.error('Failed to check Google connection:', err);
+      }
+    };
+    checkGoogle();
+  }, []);
 
   //get all reminder on page load
   useEffect(() => {
     dispatch(fetchReminders());
 
     const params = new URLSearchParams(window.location.search);
-    const googleConnected = params.get('googleConnected');
+    const isGoogleConnectedParam = params.get('googleConnected');
     const errorParam = params.get('error');
     
-    if (googleConnected === 'true') {
+    if (isGoogleConnectedParam === 'true') {
       showToast('Google Calendar connected successfully!', 'success');
+      setGoogleConnected(true);
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
-    } else if (googleConnected === 'false') {
+    } else if (isGoogleConnectedParam === 'false') {
       const errorMessage = errorParam 
         ? `Failed to connect Google Calendar: ${errorParam}`
         : 'Failed to connect Google Calendar';
@@ -62,7 +79,7 @@ export default function Reminders() {
     setSelectedDate(info.dateStr);
     setEditingReminder(null);
     setReminderText('');
-    setTime('');
+    setTime('09:00');
     setShowModal(true);
   };
 
@@ -148,6 +165,11 @@ export default function Reminders() {
 
   const handleGoogleConnect = async (e) => {
     e.preventDefault();
+    if (googleConnected) {
+      setShowDisconnectModal(true);
+      return;
+    }
+
     console.log('🔐 Google Connect button clicked');
     
     try {
@@ -178,12 +200,12 @@ export default function Reminders() {
         </div>
         <div>
           <button
-            className="btn btn-outline-primary"
+            className={`btn ${googleConnected ? 'btn-success' : 'btn-outline-primary'}`}
             onClick={handleGoogleConnect}
             disabled={loading}
           >
             {loading && <FaSpinner className="fa-spin me-2" />}
-            Connect Google Calendar
+            {googleConnected ? 'Connected to Calendar' : 'Connect to Calendar'}
           </button>
         </div>
       </div>
@@ -196,7 +218,7 @@ export default function Reminders() {
           </div>
         )}
 
-        {loading && <LoadingSpinner />}
+
 
         <FullCalendar
           plugins={[dayGridPlugin, interactionPlugin]}
@@ -350,6 +372,43 @@ export default function Reminders() {
         </div>
       )}
       <ToastNotification toasts={toasts} onClose={removeToast} />
+      {/* Disconnect Google Calendar Modal */}
+      {showDisconnectModal && (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-danger fw-bold">Disconnect Google Calendar</h5>
+                <button type="button" className="btn-close" onClick={() => setShowDisconnectModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p className="mb-0">Are you sure you want to disconnect your Google Calendar? Your synced reminders will no longer be updated.</p>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDisconnectModal(false)}>
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger" 
+                  onClick={async () => {
+                    setShowDisconnectModal(false);
+                    try {
+                      await reminderService.disconnectGoogle();
+                      setGoogleConnected(false);
+                      showToast('Google Calendar disconnected successfully', 'success');
+                    } catch (err) {
+                      showToast('Failed to disconnect Google Calendar', 'error');
+                    }
+                  }}
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

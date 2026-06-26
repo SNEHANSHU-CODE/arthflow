@@ -124,12 +124,17 @@ class AuthController {
       const { accessToken, refreshToken, sessionId } = JWTUtils.generateTokenPair(user._id);
 
       // Save refresh token to user with device info
+      // Keep maximum 5 sessions to prevent document bloat
+      if (user.refreshTokens.length >= 5) {
+        user.refreshTokens = user.refreshTokens.slice(-4);
+      }
       user.refreshTokens.push({
         _id: sessionId,
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
-        createdAt: new Date()
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       });
 
       // Track registration as first login
@@ -226,7 +231,8 @@ class AuthController {
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
-        createdAt: new Date()
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       };
 
       const updatedUser = await User.findByIdAndUpdate(
@@ -295,15 +301,9 @@ class AuthController {
       }
 
       // Clean up expired tokens
-      const currentTokenObj = user.refreshTokens.find(t => t.token === refreshToken);
-      if (currentTokenObj) {
-        await User.findByIdAndUpdate(user._id, {
-          $pull: { refreshTokens: { token: refreshToken } }
-        });
-        await User.findByIdAndUpdate(user._id, {
-          $push: { refreshTokens: { $each: [currentTokenObj], $slice: -5 } }
-        });
-      }
+      await User.findByIdAndUpdate(user._id, {
+        $pull: { refreshTokens: { expiresAt: { $lt: new Date() } } }
+      });
 
       // Generate new access token
       const newAccessToken = JWTUtils.generateAccessToken(user._id);
@@ -651,7 +651,8 @@ class AuthController {
         token: refreshToken,
         device: req.get('user-agent'),
         ip: getClientIp(req),
-        createdAt: new Date()
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       };
 
       const updatedUser = await User.findByIdAndUpdate(

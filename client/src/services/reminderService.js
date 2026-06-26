@@ -27,6 +27,16 @@ const reminderService = {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const response = await apiClient.post('/google', { timeZone });
     return response.data;
+  },
+  
+  async checkGoogleConnection() {
+    const response = await apiClient.get('/google/status');
+    return response.data;
+  },
+  
+  async disconnectGoogle() {
+    const response = await apiClient.delete('/google/disconnect');
+    return response.data;
   }
 };
 

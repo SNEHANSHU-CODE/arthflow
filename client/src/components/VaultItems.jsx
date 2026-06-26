@@ -177,7 +177,13 @@ export default function VaultItems({ onSelect }) {
 
   const confirmDelete = () => {
     if (documentToDelete) {
-      dispatch(deleteDocument(documentToDelete._id));
+      dispatch(deleteDocument(documentToDelete._id))
+        .unwrap()
+        .then(() => {
+          setTimeout(() => {
+            window.dispatchEvent(new Event('vault-updated'));
+          }, 3000);
+        });
       setDocumentToDelete(null);
     }
   };

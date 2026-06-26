@@ -414,7 +414,7 @@ export default function Goals() {
                             <button className="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                               Actions
                             </button>
-                            <ul className="dropdown-menu">
+                            <ul className="dropdown-menu dropdown-menu-end shadow-sm" style={{ zIndex: 1050 }}>
                               <li>
                                 <button className="dropdown-item" onClick={() => handleAddFunds(goal)}>
                                   <FaPlus className="me-2" size={12} />
@@ -514,7 +514,7 @@ export default function Goals() {
                           <button className="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                             Actions
                           </button>
-                          <ul className="dropdown-menu">
+                          <ul className="dropdown-menu dropdown-menu-end shadow-sm" style={{ zIndex: 1050 }}>
                             <li>
                               <button className="dropdown-item" onClick={() => handleEdit(goal)}>
                                 <FaEdit className="me-2" size={12} />
@@ -582,7 +582,7 @@ export default function Goals() {
 
       {/* Add/Edit Goal Modal */}
       {showAddModal && (
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -694,7 +694,7 @@ export default function Goals() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && goalToDelete && (
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">
@@ -809,7 +809,7 @@ export default function Goals() {
 
       {/* Add Funds Modal */}
       {showAddFundsModal && selectedGoal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className="modal-content">
               <div className="modal-header">

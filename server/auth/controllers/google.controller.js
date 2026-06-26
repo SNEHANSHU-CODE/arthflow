@@ -79,11 +79,15 @@ class GoogleOAuthController {
         await User.findByIdAndUpdate(user.id, {
           $push: {
             refreshTokens: {
-              _id: sessionId,
-              token: refreshToken,
-              device: req.get('user-agent'),
-              ip: getClientIp(req),
-              createdAt: new Date()
+              $each: [{
+                _id: sessionId,
+                token: refreshToken,
+                device: req.get('user-agent'),
+                ip: getClientIp(req),
+                createdAt: new Date(),
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+              }],
+              $slice: -5
             }
           },
           lastLoginAt: new Date(),

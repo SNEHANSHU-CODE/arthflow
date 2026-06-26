@@ -758,7 +758,7 @@ class PdfReportService {
           stack: [
             { text: 'Alerts & Recommendations', style: 'subHeading', margin: [0, 10, 0, 8] },
             {
-              ol: recommendations.map(rec => ({
+              ul: recommendations.map(rec => ({
                 text: rec,
                 margin: [0, 4, 0, 4]
               }))
@@ -944,7 +944,7 @@ class PdfReportService {
     return {
       stack: [
         {
-          ol: recommendations.map((rec, idx) => ({
+          ul: recommendations.map((rec, idx) => ({
             text: rec,
             margin: [0, 8, 0, 8],
             style: 'normal'

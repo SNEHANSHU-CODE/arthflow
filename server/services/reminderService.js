@@ -20,9 +20,21 @@ class ReminderService {
 
       // Try to get tokens from Redis first
       let tokens = await getGoogleTokens(userId);
+      let tokenValid = false;
+
+      if (tokens && tokens.access_token) {
+        oauth2Client.setCredentials(tokens);
+        try {
+          await oauth2Client.getAccessToken();
+          tokenValid = true;
+        } catch (validationError) {
+          console.log('Token from Redis is invalid/expired. Will try to refresh from DB.');
+          tokenValid = false;
+        }
+      }
 
       // If missing or expired tokens, fallback to DB
-      if (!tokens || !tokens.access_token) {
+      if (!tokenValid) {
         console.log('No valid tokens in Redis, checking DB for refresh token...');
         
         const user = await User.findById(userId).select('+googleRefreshToken');
@@ -48,14 +60,6 @@ class ReminderService {
 
       // Set credentials
       oauth2Client.setCredentials(tokens);
-      
-      // Verify token validity with a test call
-      try {
-        await oauth2Client.getAccessToken();
-      } catch (validationError) {
-        console.error('Token validation failed:', validationError);
-        throw new Error('Google access token is invalid. Please reconnect your Google account.');
-      }
 
       return google.calendar({ version: 'v3', auth: oauth2Client });
       
@@ -75,11 +79,9 @@ class ReminderService {
         description: reminder.description || '',
         start: {
           dateTime: new Date(reminder.date).toISOString(),
-          timeZone: reminder.timeZone || 'UTC',
         },
         end: {
           dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString(),
-          timeZone: reminder.timeZone || 'UTC',
         },
       };
 
@@ -110,11 +112,9 @@ class ReminderService {
         description: reminder.description || '',
         start: {
           dateTime: new Date(reminder.date).toISOString(),
-          timeZone: reminder.timeZone || 'UTC',
         },
         end: {
           dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString(),
-          timeZone: reminder.timeZone || 'UTC',
         },
       };
 

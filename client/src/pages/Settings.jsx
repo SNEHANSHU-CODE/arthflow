@@ -23,10 +23,11 @@ import {
   terminateAllSessionsAction,
   toggleMFA
 } from "../app/authSlice";
-
+import { useToast } from "../hooks/useToast";
 
 export default function Settings() {
   const dispatch = useDispatch();
+  const { showToast } = useToast();
   
   // Redux state
   const { 
@@ -97,13 +98,12 @@ export default function Settings() {
   };
 
   const handleResetPreferences = async () => {
-    if (window.confirm('Reset to default?')) {
-      try {
-        await dispatch(resetUserPreferences()).unwrap();
-        setSaveSuccess(true);
-      } catch (error) {
-        console.error('Failed to reset preferences:', error);
-      }
+    try {
+      await dispatch(resetUserPreferences()).unwrap();
+      showToast('Preferences reset to default', 'success');
+    } catch (error) {
+      console.error('Failed to reset preferences:', error);
+      showToast('Failed to reset preferences', 'error');
     }
   };
 

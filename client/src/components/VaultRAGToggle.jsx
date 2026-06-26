@@ -31,6 +31,10 @@ export default function VaultRAGToggle({ userId, onVaultSelect }) {
       return;
     }
     fetchProcessedVaults(uid);
+
+    const handleVaultUpdated = () => fetchProcessedVaults(uid);
+    window.addEventListener('vault-updated', handleVaultUpdated);
+    return () => window.removeEventListener('vault-updated', handleVaultUpdated);
   }, [userId]);
 
   // Close dropdown on outside click

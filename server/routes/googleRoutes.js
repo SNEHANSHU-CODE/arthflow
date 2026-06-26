@@ -1,6 +1,6 @@
 const express = require('express');
 const { google } = require('googleapis');
-const { oauth2Client, getAuthUrl } = require('../utils/googleOauth');
+const { createOAuthClient, getAuthUrl } = require('../utils/googleOauth');
 const { saveGoogleTokens } = require('../utils/googleTokenCache');
 const User = require('../models/userModel');
 const Reminder = require('../models/reminderModel');
@@ -50,12 +50,25 @@ const saveTokensComplete = async (userId, tokens) => {
 
 const getAuthorizedClient = async (userId) => {
   try {
+    const oauth2Client = createOAuthClient();
     // Try to get tokens from Redis first
     const { getGoogleTokens } = require('../utils/googleTokenCache');
     let tokens = await getGoogleTokens(userId);
+    let tokenValid = false;
 
-    if (!tokens || !tokens.access_token) {
-      console.log('No tokens in Redis, checking DB for refresh token...');
+    if (tokens && tokens.access_token) {
+      oauth2Client.setCredentials(tokens);
+      try {
+        await oauth2Client.getAccessToken();
+        tokenValid = true;
+      } catch (e) {
+        console.log('Token from Redis is invalid/expired. Will try to refresh from DB.');
+        tokenValid = false;
+      }
+    }
+
+    if (!tokenValid) {
+      console.log('No tokens in Redis or invalid, checking DB for refresh token...');
       
       // Fallback to DB refresh token
       const user = await User.findById(userId).select('+googleRefreshToken');
@@ -81,14 +94,6 @@ const getAuthorizedClient = async (userId) => {
 
     // Set credentials and return calendar client
     oauth2Client.setCredentials(tokens);
-    
-    // Verify the token is still valid
-    try {
-      await oauth2Client.getAccessToken();
-    } catch (tokenError) {
-      console.error('❌ Token validation failed:', tokenError);
-      throw new Error('Google access token is invalid. Please reconnect.');
-    }
 
     return google.calendar({ version: 'v3', auth: oauth2Client });
   } catch (error) {
@@ -113,12 +118,10 @@ const syncAllRemindersToGoogle = async (userId, userTimezone = 'UTC') => {
             summary: reminder.title,
             description: reminder.description || '',
             start: { 
-              dateTime: new Date(reminder.date).toISOString(),
-              timeZone: userTimezone
+              dateTime: new Date(reminder.date).toISOString()
             },
             end: { 
-              dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString(),
-              timeZone: userTimezone
+              dateTime: new Date(new Date(reminder.date).getTime() + 60 * 60 * 1000).toISOString()
             },
           };
 
@@ -231,6 +234,7 @@ googleRouter.get('/callback', async (req, res) => {
     console.log('🔄 Exchanging code for tokens...');
     
     // Exchange code for tokens
+    const oauth2Client = createOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
     console.log('✅ Tokens received:', {
       hasAccessToken: !!tokens.access_token,

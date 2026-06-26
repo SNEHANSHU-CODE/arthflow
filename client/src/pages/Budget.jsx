@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Cell
 } from 'recharts';
-import { fetchBudget, createBudget, updateBudget } from '../app/budgetSlice';
+import { fetchBudget, createBudget, updateBudget, deleteBudget } from '../app/budgetSlice';
 import { fetchTransactions } from '../app/transactionSlice';
 import { useSettings } from '../hooks/useSettings';
 import { useToast } from '../hooks/useToast';
@@ -345,6 +345,7 @@ export default function Budget() {
   const userId = useSelector(s => s.auth.user?.userId);
   const [budgetTransactions, setBudgetTransactions] = useState([]);
   const [txLoading, setTxLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     dispatch(fetchBudget({ month, year }));
@@ -415,9 +416,14 @@ export default function Budget() {
             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           {budget && !showForm && (
-            <button className="btn btn-outline-primary btn-sm" onClick={() => setShowForm(true)}>
-              ✏️ Edit Budget
-            </button>
+            <>
+              <button className="btn btn-outline-primary btn-sm me-2" onClick={() => setShowForm(true)}>
+                ✏️ Edit Budget
+              </button>
+              <button className="btn btn-outline-danger btn-sm" onClick={() => setShowDeleteModal(true)}>
+                🗑️ Delete
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -482,6 +488,40 @@ export default function Budget() {
           <UnplannedCategories items={unplanned} />
         </>
       )}
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-danger fw-bold">Delete Budget</h5>
+                <button type="button" className="btn-close" onClick={() => setShowDeleteModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p className="mb-0">Are you sure you want to delete this budget? This action cannot be undone.</p>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowDeleteModal(false)}>
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger" 
+                  onClick={async () => {
+                    const id = budget._id;
+                    setShowDeleteModal(false);
+                    await dispatch(deleteBudget(id));
+                    showToast("Budget deleted successfully", "success");
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastNotification toasts={toasts} onClose={removeToast} />
     </div>
   );

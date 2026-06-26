@@ -71,8 +71,7 @@ const ProfilePage = () => {
     if (validate()) {
       try {
         const userData = {
-          username: editData.username,
-          email: editData.email
+          username: editData.username
         };
         const result = await dispatch(updateUserProfile(userData)).unwrap();
         setProfileData({
@@ -330,6 +329,7 @@ const ProfilePage = () => {
                               className={`form-control ${errors.email ? 'is-invalid' : ''}`}
                               value={editData.email}
                               onChange={(e) => handleInputChange('email', e.target.value)}
+                              disabled
                             />
                             {errors.email && (
                               <div className="invalid-feedback">
