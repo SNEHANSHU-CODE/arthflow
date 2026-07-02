@@ -67,6 +67,34 @@ export default function Signup() {
         setShowCPassword(prev => !prev);
     };
 
+    const validateField = (name, value) => {
+        const nameRegex = /^[A-Za-z\s]{3,}$/;
+        const emailRegex = /^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+        let errorMsg = '';
+
+        if (name === 'username') {
+            if (!value.trim()) errorMsg = 'Username is required.';
+            else if (!nameRegex.test(value)) errorMsg = 'Username should be at least 3 characters and contain only letters.';
+        } else if (name === 'email') {
+            if (!value.trim()) errorMsg = 'Email is required.';
+            else if (!emailRegex.test(value)) errorMsg = 'Invalid email format.';
+        } else if (name === 'password') {
+            if (!value) errorMsg = 'Password is required.';
+            else if (!passwordRegex.test(value)) errorMsg = 'Password must be 8+ chars, with uppercase, lowercase, digit & special char.';
+        } else if (name === 'cpassword') {
+            if (!value) errorMsg = 'Please confirm your password.';
+            else if (signup.password !== value) errorMsg = 'Passwords do not match.';
+        }
+
+        setErrors(prev => ({ ...prev, [name]: errorMsg }));
+    };
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        validateField(name, value);
+    };
+
     const validate = () => {
         const newErrors = {};
         const nameRegex = /^[A-Za-z\s]{3,}$/;
@@ -251,6 +279,7 @@ export default function Signup() {
                                                     placeholder="Enter your username"
                                                     value={signup.username}
                                                     onChange={handleChange}
+                                                    onBlur={handleBlur}
                                                     disabled={otpLoading}
                                                 />
                                             </div>
@@ -279,6 +308,7 @@ export default function Signup() {
                                                     placeholder="Enter your email"
                                                     value={signup.email}
                                                     onChange={handleChange}
+                                                    onBlur={handleBlur}
                                                     disabled={otpLoading}
                                                 />
                                             </div>
@@ -307,6 +337,7 @@ export default function Signup() {
                                                     placeholder="Enter your password"
                                                     value={signup.password}
                                                     onChange={handleChange}
+                                                    onBlur={handleBlur}
                                                     disabled={otpLoading}
                                                 />
                                                 <button
@@ -343,6 +374,7 @@ export default function Signup() {
                                                     placeholder="Confirm your password"
                                                     value={signup.cpassword}
                                                     onChange={handleChange}
+                                                    onBlur={handleBlur}
                                                     disabled={otpLoading}
                                                 />
                                                 <button

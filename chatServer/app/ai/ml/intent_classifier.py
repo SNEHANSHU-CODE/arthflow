@@ -67,6 +67,8 @@ class IntentClassifier:
         """
         try:
             llm = await llm_provider.get_default_llm()
+            # Hardcode max_tokens to 256 for intent classification to save rate limit capacity
+            llm = llm.bind(max_tokens=256)
             
             system_prompt = """
 You are an intent classifier for a personal finance assistant.
@@ -78,7 +80,7 @@ The valid domains are:
 - needs_budgets: Requires budget limit data (e.g., "what is my food budget?", "budget vs spending")
 - needs_general: General query, no specific financial data needed (e.g., "hello", "what is a mutual fund?")
 
-Output ONLY a valid JSON object with boolean values for each domain. Do not include any other text.
+CRITICAL INSTRUCTION: Output ONLY a valid JSON object. Do NOT include any markdown formatting (like ```json), and do NOT include any conversational text or reasoning. Just output the raw JSON brackets and content.
 Example Output:
 {"needs_transactions": true, "needs_goals": false, "needs_reminders": false, "needs_budgets": false, "needs_general": false}
 """
@@ -91,14 +93,12 @@ Example Output:
             response = await llm.ainvoke(messages)
             content = response.content.strip()
             
-            # Clean up markdown JSON formatting if present
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-                
+            # Robust JSON extraction using regex in case the LLM ignored formatting rules
+            import re
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                content = json_match.group(0)
+            
             content = content.strip()
             
             intents = json.loads(content)

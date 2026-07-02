@@ -272,13 +272,13 @@ class RAGQueryService:
     def _format_context(results: list[EmbeddingSearchResult]) -> str:
         """
         Format retrieved chunks into a readable context block.
-        Sorted by chunk_index to preserve document flow.
+        Sorted by chunk_index to preserve document flow, wrapped in XML.
         """
         sorted_results = sorted(results, key=lambda r: r.chunkIndex)
         parts = []
         for r in sorted_results:
-            page_label = f"[Page {r.pageNumber}] " if r.pageNumber else ""
-            parts.append(f"{page_label}{r.text}")
+            page_attr = f' page="{r.pageNumber}"' if r.pageNumber else ""
+            parts.append(f'<chunk source="{r.source}"{page_attr}>\n{r.text}\n</chunk>')
         return "\n\n".join(parts)
 
     @classmethod

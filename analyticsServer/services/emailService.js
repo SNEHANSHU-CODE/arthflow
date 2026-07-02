@@ -77,7 +77,7 @@ class EmailService {
   _generateMonthlyReportTemplate(data) {
     const safeName   = this.sanitizeText(data.name);
     const safeMonth  = this.sanitizeText(data.monthLabel);
-    const fmt        = (n) => `\u20b9${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmt        = (n) => `${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const isPositive = (data.netSavings || 0) >= 0;
 
     const rows = [

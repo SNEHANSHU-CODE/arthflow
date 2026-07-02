@@ -58,15 +58,17 @@ def _fmt_transactions(transactions: List[Dict], currency_symbol: str = "₹") ->
     if not transactions:
         return "No transactions found for this period."
     lines = []
+    lines.append("| Date | Type | Category | Amount | Description |")
+    lines.append("|---|---|---|---|---|")
     for t in transactions[:20]:  # cap at 20 to stay within context
         date_str = ""
         if t.get("date"):
             d = t["date"]
             date_str = d.strftime("%b %d") if isinstance(d, datetime) else str(d)[:10]
-        lines.append(
-            f"  • [{date_str}] {t.get('type','?')} | {t.get('category','?')} | "
-            f"{currency_symbol}{t.get('amount', 0):,.2f} — {t.get('description','')}"
-        )
+        desc = str(t.get('description','')).replace('|', '-')
+        cat = str(t.get('category','')).replace('|', '-')
+        amt = f"{currency_symbol}{t.get('amount', 0):,.2f}"
+        lines.append(f"| {date_str} | {t.get('type','?')} | {cat} | {amt} | {desc} |")
     return "\n".join(lines)
 
 
@@ -74,16 +76,18 @@ def _fmt_goals(goals: List[Dict], currency_symbol: str = "₹") -> str:
     if not goals:
         return "No goals found."
     lines = []
+    lines.append("| Goal | Status | Saved | Target | Progress | Due Date |")
+    lines.append("|---|---|---|---|---|---|")
     for g in goals:
         target_date = ""
         if g.get("targetDate"):
             d = g["targetDate"]
             target_date = d.strftime("%b %d, %Y") if isinstance(d, datetime) else str(d)[:10]
-        lines.append(
-            f"  • {g.get('name','?')} | {g.get('status','?')} | "
-            f"{currency_symbol}{g.get('savedAmount',0):,.0f} / {currency_symbol}{g.get('targetAmount',0):,.0f} "
-            f"({g.get('progressPercentage',0)}%) | Due: {target_date}"
-        )
+        name = str(g.get('name','?')).replace('|', '-')
+        saved = f"{currency_symbol}{g.get('savedAmount',0):,.0f}"
+        target = f"{currency_symbol}{g.get('targetAmount',0):,.0f}"
+        prog = f"{g.get('progressPercentage',0)}%"
+        lines.append(f"| {name} | {g.get('status','?')} | {saved} | {target} | {prog} | {target_date} |")
     return "\n".join(lines)
 
 
@@ -91,14 +95,18 @@ def _fmt_reminders(reminders: List[Dict]) -> str:
     if not reminders:
         return "No upcoming reminders."
     lines = []
+    lines.append("| Reminder | Date & Time | Status |")
+    lines.append("|---|---|---|")
     for r in reminders[:10]:
         date_str = ""
         if r.get("date"):
             d = r["date"]
             date_str = d.strftime("%b %d, %Y %H:%M") if isinstance(d, datetime) else str(d)[:16]
-        overdue = " ⚠️ OVERDUE" if r.get("isOverdue") else ""
-        today = " 📅 TODAY" if r.get("isToday") else ""
-        lines.append(f"  • {r.get('title','?')} — {date_str}{today}{overdue}")
+        overdue = "OVERDUE" if r.get("isOverdue") else ""
+        today = "TODAY" if r.get("isToday") else ""
+        status = overdue or today or "Upcoming"
+        title = str(r.get('title','?')).replace('|', '-')
+        lines.append(f"| {title} | {date_str} | {status} |")
     return "\n".join(lines)
 
 
@@ -111,17 +119,21 @@ def _fmt_budgets(budget: Dict, currency_symbol: str = "₹") -> str:
     year = budget.get("year")
     month_name = datetime(year, month, 1).strftime("%B %Y") if month and year else "Current"
     
-    lines.append(f"📌 Budget: {month_name}")
-    lines.append(f"  Total Budget: {currency_symbol}{budget.get('totalBudget', 0):,.2f}")
-    lines.append(f"  Total Spent: {currency_symbol}{budget.get('totalSpent', 0):,.2f}")
-    lines.append(f"  Remaining: {currency_symbol}{budget.get('remaining', 0):,.2f}")
-    lines.append(f"  Utilization: {budget.get('utilizationPercentage', 0):.1f}%")
+    lines.append(f"**Budget: {month_name}**")
+    lines.append(f"- Total Budget: {currency_symbol}{budget.get('totalBudget', 0):,.2f}")
+    lines.append(f"- Total Spent: {currency_symbol}{budget.get('totalSpent', 0):,.2f}")
+    lines.append(f"- Remaining: {currency_symbol}{budget.get('remaining', 0):,.2f}")
+    lines.append(f"- Utilization: {budget.get('utilizationPercentage', 0):.1f}%")
     
     categories = budget.get("categories", [])
     if categories:
-        lines.append("  Category Limits:")
+        lines.append("")
+        lines.append("| Category | Limit |")
+        lines.append("|---|---|")
         for cat in categories[:10]:  # cap at 10 categories
-            lines.append(f"    • {cat.get('name', '?')}: {currency_symbol}{cat.get('limit', 0):,.2f}")
+            name = str(cat.get('name', '?')).replace('|', '-')
+            limit = f"{currency_symbol}{cat.get('limit', 0):,.2f}"
+            lines.append(f"| {name} | {limit} |")
     
     return "\n".join(lines)
 
@@ -289,42 +301,42 @@ Response Structure:
 
         if context.get("monthly_summary"):
             sections.append(
-                f"📊 THIS MONTH'S FINANCIAL SUMMARY:\n{context['monthly_summary']}"
+                f"<monthly_summary>\n{context['monthly_summary']}\n</monthly_summary>"
             )
 
         if context.get("transactions"):
             sections.append(
-                f"💳 RECENT TRANSACTIONS (last 30 days):\n{context['transactions']}"
+                f"<recent_transactions>\n{context['transactions']}\n</recent_transactions>"
             )
 
         if context.get("goal_summary"):
             sections.append(
-                f"🎯 GOAL OVERVIEW:\n{context['goal_summary']}"
+                f"<goal_overview>\n{context['goal_summary']}\n</goal_overview>"
             )
 
         if context.get("goals"):
             sections.append(
-                f"🎯 YOUR GOALS:\n{context['goals']}"
+                f"<goals_data>\n{context['goals']}\n</goals_data>"
             )
 
         if context.get("reminder_counts"):
             sections.append(
-                f"🔔 REMINDER OVERVIEW: {context['reminder_counts']}"
+                f"<reminder_counts>\n{context['reminder_counts']}\n</reminder_counts>"
             )
 
         if context.get("today_reminders"):
             sections.append(
-                f"🔔 TODAY'S REMINDERS:\n{context['today_reminders']}"
+                f"<today_reminders>\n{context['today_reminders']}\n</today_reminders>"
             )
 
         if context.get("reminders"):
             sections.append(
-                f"🔔 UPCOMING REMINDERS (next 14 days):\n{context['reminders']}"
+                f"<upcoming_reminders>\n{context['reminders']}\n</upcoming_reminders>"
             )
 
         if context.get("budgets"):
             sections.append(
-                f"💰 BUDGET:\n{context['budgets']}"
+                f"<budget_data>\n{context['budgets']}\n</budget_data>"
             )
 
         # If no specific data was fetched, add a note so the LLM knows it can still help

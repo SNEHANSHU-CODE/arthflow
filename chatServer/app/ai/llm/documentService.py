@@ -233,26 +233,31 @@ class DocumentService:
     @staticmethod
     def _extract_csv(csv_bytes: bytes, source: str) -> List[dict]:
         """
-        Parse CSV into a single text block.
-        Each row → "col1: val1 | col2: val2 ..." line.
+        Parse CSV into a single text block formatted as a Markdown table.
         page_number is None (no page concept for CSV).
         """
         try:
             text_content = csv_bytes.decode("utf-8-sig", errors="replace")
-            reader = csv.DictReader(io.StringIO(text_content))
+            reader = csv.reader(io.StringIO(text_content))
             rows = list(reader)
             if not rows:
                 raise ValueError(f"CSV '{source}' is empty")
 
             lines = []
-            for row in rows:
-                line = " | ".join(
-                    f"{k.strip()}: {v.strip()}" for k, v in row.items() if v and v.strip()
-                )
-                if line:
-                    lines.append(line)
+            headers = [str(h).strip().replace('|', '-') for h in rows[0]]
+            if headers:
+                lines.append("| " + " | ".join(headers) + " |")
+                lines.append("|" + "|".join(["---"] * len(headers)) + "|")
+                
+            for row in rows[1:]:
+                clean_row = [str(cell).strip().replace('|', '-') for cell in row]
+                # Ensure row matches header length
+                padded_row = clean_row + [""] * (len(headers) - len(clean_row))
+                padded_row = padded_row[:len(headers)]
+                if any(clean_row):
+                    lines.append("| " + " | ".join(padded_row) + " |")
 
-            if not lines:
+            if len(lines) <= 2:
                 raise ValueError(f"No data rows found in CSV '{source}'")
 
             return [{"page_number": None, "text": "\n".join(lines)}]
@@ -263,8 +268,7 @@ class DocumentService:
     @staticmethod
     def _extract_xlsx(xlsx_bytes: bytes, source: str) -> List[dict]:
         """
-        Parse XLSX — one section per sheet.
-        Each row → space-separated cell values.
+        Parse XLSX — one section per sheet, formatted as a Markdown table.
         page_number = sheet index (1-based).
         """
         try:
@@ -275,14 +279,29 @@ class DocumentService:
             for sheet_idx, sheet_name in enumerate(wb.sheetnames, start=1):
                 ws = wb[sheet_name]
                 lines = []
+                is_first_row = True
+                header_len = 0
+                
                 for row in ws.iter_rows(values_only=True):
-                    cells = [str(c).strip() for c in row if c is not None and str(c).strip()]
-                    if cells:
-                        lines.append(" | ".join(cells))
+                    cells = [str(c).strip().replace('|', '-') if c is not None else "" for c in row]
+                    
+                    if not any(cells):
+                        continue
+                        
+                    if is_first_row:
+                        header_len = len(cells)
+                        lines.append(f"| " + " | ".join(cells) + " |")
+                        lines.append("|" + "|".join(["---"] * header_len) + "|")
+                        is_first_row = False
+                    else:
+                        padded_cells = cells + [""] * (header_len - len(cells))
+                        padded_cells = padded_cells[:header_len]
+                        lines.append(f"| " + " | ".join(padded_cells) + " |")
+                        
                 if lines:
                     pages.append({
                         "page_number": sheet_idx,
-                        "text": f"[Sheet: {sheet_name}]\n" + "\n".join(lines),
+                        "text": f"[Sheet: {sheet_name}]\n\n" + "\n".join(lines),
                     })
             wb.close()
 

@@ -407,8 +407,16 @@ const chatSlice = createSlice({
         // Silent fail — history just won't load, not a critical error
       })
       
-      // Clear chat state on logout
+      // Clear chat state on logout or account deletion
       .addCase('auth/logout/fulfilled', (state) => {
+        state.messages = [];
+        state.error = null;
+        state.isTyping = false;
+        state.loading = false;
+        state.lastMessageId = null;
+        state.sessionStats = { ...initialState.sessionStats };
+      })
+      .addCase('auth/deleteAccount/fulfilled', (state) => {
         state.messages = [];
         state.error = null;
         state.isTyping = false;

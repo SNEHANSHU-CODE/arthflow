@@ -166,6 +166,13 @@ const ResetPassword = () => {
     }
   };
 
+  const handleEmailBlur = (e) => {
+    const value = e.target.value.trim();
+    if (value && !validateEmail(value)) {
+      setEmailError('Please enter a valid email address');
+    }
+  };
+
   const handleSendOTP = async (e) => {
     e.preventDefault();
 
@@ -259,6 +266,22 @@ const ResetPassword = () => {
     if (field === 'newPassword') {
       const strength = validatePassword(value);
       setPasswordStrength(strength);
+    }
+  };
+
+  const handlePasswordBlur = (field) => {
+    const value = passwords[field];
+    if (!value) return;
+
+    if (field === 'newPassword') {
+      const validation = validatePassword(value);
+      if (!validation.isValid) {
+        setPasswordErrors(prev => ({ ...prev, newPassword: 'Password does not meet requirements' }));
+      }
+    } else if (field === 'confirmPassword') {
+      if (value !== passwords.newPassword) {
+        setPasswordErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      }
     }
   };
 
@@ -375,6 +398,7 @@ const ResetPassword = () => {
                         placeholder="Enter your email"
                         value={email}
                         onChange={handleEmailChange}
+                        onBlur={handleEmailBlur}
                         disabled={loading}
                         autoComplete="email"
                         required
@@ -481,6 +505,7 @@ const ResetPassword = () => {
                         placeholder="Enter new password"
                         value={passwords.newPassword}
                         onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                        onBlur={() => handlePasswordBlur('newPassword')}
                         disabled={loading}
                         required
                       />
@@ -544,6 +569,7 @@ const ResetPassword = () => {
                         placeholder="Confirm new password"
                         value={passwords.confirmPassword}
                         onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                        onBlur={() => handlePasswordBlur('confirmPassword')}
                         disabled={loading}
                         required
                       />

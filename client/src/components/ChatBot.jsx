@@ -73,16 +73,18 @@ const ChatBot = () => {
   const isAtBottomRef = useRef(true);
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
-    isAtBottomRef.current = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
+    // Increase threshold to 100px so minor scrolls don't break auto-scroll
+    isAtBottomRef.current = Math.abs(scrollHeight - clientHeight - scrollTop) < 100;
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  const scrollToBottom = (behavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   useEffect(() => {
-    if (isAtBottomRef.current) {
-      scrollToBottom();
+    // Force scroll to bottom when typing starts or if we are near the bottom
+    if (isTyping || isAtBottomRef.current) {
+      setTimeout(() => scrollToBottom('smooth'), 50); // Smooth scroll for new messages
     }
   }, [messages, isTyping]);
 
@@ -192,10 +194,14 @@ const ChatBot = () => {
     }
   }, [connected, dispatch]); // suggestions.length intentionally omitted to avoid re-trigger
 
-  // Focus input when chat opens
+  // Focus input and scroll to bottom when chat opens
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+    if (isOpen) {
+      if (inputRef.current) inputRef.current.focus();
+      // Ensure we are instantly at the bottom of the history when reopening, unless the chat is empty
+      if (messages.length > 0) {
+        setTimeout(() => scrollToBottom('auto'), 50);
+      }
     }
   }, [isOpen]);
 

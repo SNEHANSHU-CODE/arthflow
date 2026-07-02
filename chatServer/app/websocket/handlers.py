@@ -454,7 +454,7 @@ class SocketEventHandlers:
 
                 # Save complete messages to MongoDB
                 if is_authenticated and memory:
-                    await memory.add_message(masked_msg, message_type="human")
+                    await memory.add_message(masked_msg, message_type="human", metadata=metadata)
                     await memory.add_message(accumulated_text, message_type="ai", metadata={"provider": provider, "messageId": message_id, **metadata})
 
                 # Emit final chunk (isLast=True)
