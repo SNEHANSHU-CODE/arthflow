@@ -18,19 +18,20 @@ class ReminderService {
         process.env.GOOGLE_CALENDAR_REDIRECT_URI
       );
 
-      // Try to get tokens from Redis first
+      // Try to get tokens from Redis first.
+      // Use expiry_date field (Google standard) instead of a round-trip API call
+      // to avoid silent 401s when the token has expired but the SDK doesn't throw.
       let tokens = await getGoogleTokens(userId);
-      let tokenValid = false;
+      const FIVE_MINUTES_MS = 5 * 60 * 1000;
+      const tokenValid = !!(
+        tokens &&
+        tokens.access_token &&
+        tokens.expiry_date &&
+        tokens.expiry_date > Date.now() + FIVE_MINUTES_MS
+      );
 
-      if (tokens && tokens.access_token) {
+      if (tokenValid) {
         oauth2Client.setCredentials(tokens);
-        try {
-          await oauth2Client.getAccessToken();
-          tokenValid = true;
-        } catch (validationError) {
-          console.log('Token from Redis is invalid/expired. Will try to refresh from DB.');
-          tokenValid = false;
-        }
       }
 
       // If missing or expired tokens, fallback to DB
@@ -39,6 +40,10 @@ class ReminderService {
         
         const user = await User.findById(userId).select('+googleRefreshToken');
         if (!user || !user.googleRefreshToken) {
+          console.warn(
+            `[GoogleCalendar] Access denied: No refresh token found for user ${userId}. ` +
+            'The user needs to disconnect and reconnect their Google Calendar account to reauthorize.'
+          );
           return null;
         }
 
@@ -49,8 +54,8 @@ class ReminderService {
           const { credentials } = await oauth2Client.refreshAccessToken();
           tokens = credentials;
           
-          // Save the refreshed tokens to Redis
-          await saveGoogleTokens(userId, tokens);
+          // Save the refreshed tokens to Redis/DB using helper
+          await saveTokensComplete(userId, tokens);
           console.log('Access token refreshed successfully');
         } catch (refreshError) {
           console.error('Failed to refresh access token:', refreshError);

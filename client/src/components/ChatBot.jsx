@@ -82,10 +82,14 @@ const ChatBot = () => {
   };
 
   useEffect(() => {
-    // Force scroll to bottom when typing starts or if we are near the bottom
-    if (isTyping || isAtBottomRef.current) {
-      setTimeout(() => scrollToBottom('smooth'), 50); // Smooth scroll for new messages
-    }
+    if (!isAtBottomRef.current && !isTyping) return;
+    // Check if any message is still streaming (mid-response)
+    const isStreaming = messages.some(m => m.isStreaming);
+    // During active streaming use 'instant' — avoids queuing dozens of competing
+    // smooth-scroll animations (one per token) which cause the layout flicker.
+    // 'smooth' is reserved for the completed final message only.
+    const behavior = isStreaming || isTyping ? 'instant' : 'smooth';
+    setTimeout(() => scrollToBottom(behavior), 50);
   }, [messages, isTyping]);
 
   // ---------------------------------------------------------------
@@ -433,7 +437,9 @@ const ChatBot = () => {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+              {/* overflow-anchor:none prevents this sentinel from interfering with
+                  the browser's native scroll anchoring on the message content above */}
+              <div ref={messagesEndRef} style={{ overflowAnchor: 'none' }} />
             </div>
 
             {error && (

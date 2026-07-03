@@ -60,7 +60,19 @@ export default function VaultRAGToggle({ userId, onVaultSelect }) {
       }
       const data = await res.json();
       console.log("[VaultRAGToggle] Got vaults:", data);
-      setVaults(data.vaults || []);
+      const freshVaults = data.vaults || [];
+      setVaults(freshVaults);
+
+      // If the currently selected vault was deleted, clear the selection so
+      // the chatbot stops sending its vault_id in subsequent messages.
+      setSelectedVault(prev => {
+        if (prev && !freshVaults.some(v => v.vaultId === prev.vaultId)) {
+          console.log("[VaultRAGToggle] Selected vault no longer exists — clearing.");
+          onVaultSelect(null);
+          return null;
+        }
+        return prev;
+      });
     } catch (e) {
       console.error("[VaultRAGToggle] Failed to fetch vaults:", e);
       setFetchError(e.message);

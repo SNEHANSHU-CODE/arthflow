@@ -3,18 +3,34 @@ const AuthController = require('../controllers/authControllers');
 const GoogleOAuthController = require('../auth/controllers/google.controller');
 const { authenticateToken } = require('../middleware/auth');
 
+const rateLimit = require('express-rate-limit');
+
 const authRouter = express.Router();
+
+// Strict limiter for endpoints highly susceptible to brute force
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5,
+  message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+
+// Standard limiter for other public auth endpoints
+const standardLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 15,
+  message: 'Too many requests from this IP, please try again after 15 minutes'
+});
 
 // --- Google OAuth Routes ---
 authRouter.get('/google/start', GoogleOAuthController.startOAuth);
 
 // Public routes
-authRouter.post('/register/send-otp', AuthController.sendRegistrationOTP);
-authRouter.post('/register/verify-otp', AuthController.verifyRegistrationOTP);
-authRouter.post('/register', AuthController.register);
-authRouter.post('/login', AuthController.login);
-authRouter.post('/mfa/verify', AuthController.verifyMFA);
-authRouter.post('/refresh', AuthController.refreshToken);
+authRouter.post('/register/send-otp', standardLimiter, AuthController.sendRegistrationOTP);
+authRouter.post('/register/verify-otp', strictLimiter, AuthController.verifyRegistrationOTP);
+authRouter.post('/register', standardLimiter, AuthController.register);
+authRouter.post('/login', strictLimiter, AuthController.login);
+authRouter.post('/mfa/verify', strictLimiter, AuthController.verifyMFA);
+authRouter.post('/refresh', standardLimiter, AuthController.refreshToken);
 
 // Protected routes
 authRouter.get('/profile', authenticateToken, AuthController.getProfile);

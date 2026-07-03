@@ -26,7 +26,9 @@ const saveTokensComplete = async (userId, tokens) => {
       await saveGoogleTokens(userId, tokens);
     }
 
-    // Save refresh token to MongoDB for persistence
+    // Save refresh token to MongoDB for persistence.
+    // Google only sends refresh_token on the FIRST authorization or after revoking access.
+    // On reconnects it omits it — so we only update if we actually received one.
     if (tokens.refresh_token) {
       const updatedUser = await User.findByIdAndUpdate(
         userId,
@@ -40,7 +42,15 @@ const saveTokensComplete = async (userId, tokens) => {
       
       console.log(`✅ Refresh token saved to DB for user: ${userId}`);
     } else {
-      console.log('⚠️  No refresh token received (user may have already authorized)');
+      // Google did not return a refresh_token (common on reconnect).
+      // Check if we already have one persisted in the DB — if yes, it's still valid.
+      const existingUser = await User.findById(userId).select('+googleRefreshToken');
+      if (existingUser && existingUser.googleRefreshToken) {
+        console.log(`ℹ️  No new refresh token from Google — existing DB token is still valid for user: ${userId}`);
+      } else {
+        // No refresh token anywhere — user must revoke Google access and reconnect from scratch.
+        console.warn(`⚠️  No refresh token from Google and none stored in DB for user: ${userId}. User needs to revoke Google access at myaccount.google.com and reconnect.`);
+      }
     }
   } catch (error) {
     console.error('❌ Error in saveTokensComplete:', error);
@@ -54,17 +64,18 @@ const getAuthorizedClient = async (userId) => {
     // Try to get tokens from Redis first
     const { getGoogleTokens } = require('../utils/googleTokenCache');
     let tokens = await getGoogleTokens(userId);
-    let tokenValid = false;
 
-    if (tokens && tokens.access_token) {
+    // Use expiry_date field (Google standard) to avoid silent 401s from stale tokens
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    const tokenValid = !!(
+      tokens &&
+      tokens.access_token &&
+      tokens.expiry_date &&
+      tokens.expiry_date > Date.now() + FIVE_MINUTES_MS
+    );
+
+    if (tokenValid) {
       oauth2Client.setCredentials(tokens);
-      try {
-        await oauth2Client.getAccessToken();
-        tokenValid = true;
-      } catch (e) {
-        console.log('Token from Redis is invalid/expired. Will try to refresh from DB.');
-        tokenValid = false;
-      }
     }
 
     if (!tokenValid) {

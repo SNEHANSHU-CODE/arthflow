@@ -19,13 +19,13 @@ class LLMSettings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "openai/gpt-oss-20b"
     GROQ_TEMPERATURE: float = Field(default=0.7, alias="LLM_TEMPERATURE")
-    GROQ_MAX_TOKENS: int = Field(default=1024, alias="LLM_MAX_TOKENS")
+    GROQ_MAX_TOKENS: int = Field(default=2048, alias="LLM_MAX_TOKENS")
     
     # Gemini Configuration
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
     GEMINI_TEMPERATURE: float = Field(default=0.7, alias="LLM_TEMPERATURE")
-    GEMINI_MAX_TOKENS: int = Field(default=1024, alias="LLM_MAX_TOKENS")
+    GEMINI_MAX_TOKENS: int = Field(default=2048, alias="LLM_MAX_TOKENS")
     
     # Default LLM
     DEFAULT_LLM: Literal["groq", "gemini"] = "groq"

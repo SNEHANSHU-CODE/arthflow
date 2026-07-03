@@ -1,9 +1,13 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
-const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET || 'your-reset-secret-key';
-const JWT_REGISTRATION_SECRET = process.env.JWT_REGISTRATION_SECRET || 'your-registration-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET;
+const JWT_REGISTRATION_SECRET = process.env.JWT_REGISTRATION_SECRET;
+
+if (!JWT_SECRET || !JWT_REFRESH_SECRET || !JWT_RESET_SECRET || !JWT_REGISTRATION_SECRET) {
+  throw new Error("FATAL ERROR: One or more JWT secrets are missing from the environment variables. The server cannot start securely.");
+}
 
 class JWTUtils {
   static generateAccessToken(userId, sessionId = null) {

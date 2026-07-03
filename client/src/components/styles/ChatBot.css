@@ -263,6 +263,10 @@
   overflow-y: auto;
   background: #f8f9fa;
   position: relative;
+  /* Native browser scroll anchoring: pins the bottom of the visible area
+     to the last element when new content is added below.
+     Eliminates the scroll-vs-reflow race that causes layout flicker. */
+  overflow-anchor: auto;
 }
 
 .chat-body::-webkit-scrollbar {
@@ -463,6 +467,51 @@
   background: #fee2e2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+/* ===== MARKDOWN HEADINGS INSIDE CHAT BUBBLES ===== */
+/* Scope heading sizes so they are proportional to chat bubble font,
+   not the browser's full-page defaults (h1=2em, h2=1.5em etc.) */
+.message-text h1 { font-size: 16px; font-weight: 700; margin: 10px 0 6px; }
+.message-text h2 { font-size: 15px; font-weight: 700; margin: 8px 0 5px; }
+.message-text h3 { font-size: 14px; font-weight: 600; margin: 6px 0 4px; }
+.message-text h4 { font-size: 13.5px; font-weight: 600; margin: 4px 0 3px; }
+.message-text p  { margin: 4px 0; }
+.message-text ul,
+.message-text ol { padding-left: 18px; margin: 4px 0; }
+.message-text li { margin: 2px 0; }
+
+/* ===== MARKDOWN TABLES INSIDE CHAT BUBBLES ===== */
+/* Scoped so it ONLY affects tables rendered inside bot message bubbles.
+   display:block + overflow-x:auto keeps tables inside the bubble boundary
+   and adds a horizontal scrollbar for wide tables — the GitHub/Bootstrap standard. */
+.message-text table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 100%;
+  font-size: 12.5px;
+  margin: 8px 0;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.message-text th,
+.message-text td {
+  border: 1px solid #e2e8f0;
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.message-text th {
+  background: #f0f4ff;
+  font-weight: 600;
+  color: #374151;
+}
+
+.message-text tr:nth-child(even) td {
+  background: #f8f9ff;
 }
 
 .provider-badge {
