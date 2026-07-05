@@ -68,6 +68,11 @@ class Database:
         return cls.get_db()[settings.EMBEDDINGS_COLLECTION]
 
     @classmethod
+    def faq_embeddings_collection(cls) -> AsyncIOMotorCollection:
+        """FAQ Embeddings collection — separate from user document embeddings."""
+        return cls.get_db()["faq_embeddings"]
+
+    @classmethod
     def chat_history_collection(cls) -> AsyncIOMotorCollection:
         """
         Chat history — one document per user, messages array.

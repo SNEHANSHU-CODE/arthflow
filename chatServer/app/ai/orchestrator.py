@@ -363,14 +363,16 @@ Response Structure:
         user_id: str,
         query: str,
         provider: Optional[str] = None,
-        currency_symbol: str = "₹"
+        currency_symbol: str = "₹",
+        intent: Optional[Dict[str, bool]] = None
     ) -> tuple:
         """
         Compile state, context, and fetch LLM for authenticated query.
         Returns: (messages, llm, provider, memory)
         """
-        intent = await _classify_intent(query)
-        logger.info(f"🔍 Intent detected: {intent}")
+        if intent is None:
+            intent = await _classify_intent(query)
+            logger.info(f"🔍 Intent detected: {intent}")
 
         context = await self._fetch_user_context(user_id, intent, query, currency_symbol)
         system_prompt = self._build_system_prompt(context, intent)
@@ -405,7 +407,51 @@ Response Structure:
         """
         try:
             logger.info(f"📝 Processing authenticated query for user {user_id}")
-            messages, llm, provider, memory = await self.prepare_authenticated_query(user_id, query, provider, currency_symbol)
+            
+            # Step 1: LLM Intent Classification
+            intent = await _classify_intent(query)
+            logger.info(f"🔍 Intent detected: {intent}")
+            
+            # Step 2: Semantic Cache Gateway for General Queries
+            is_general = intent.get("needs_general", False)
+            needs_data = any([
+                intent.get("needs_transactions", False),
+                intent.get("needs_goals", False),
+                intent.get("needs_reminders", False),
+                intent.get("needs_budgets", False)
+            ])
+            
+            if is_general and not needs_data:
+                logger.info("ℹ️ General intent detected. Checking Authenticated FAQ Semantic Cache...")
+                try:
+                    from app.ai.llm.embeddingService import EmbeddingService
+                    from app.services.embeddingService import EmbeddingStorageService
+                    
+                    query_embedding = await EmbeddingService.embed_query(query)
+                    cache_results = await EmbeddingStorageService.auth_faq_vector_search(query_embedding, limit=1)
+                    
+                    if cache_results and cache_results[0].score >= 0.90:
+                        best_match = cache_results[0]
+                        logger.info(f"✅ Auth Cache HIT for: {best_match.query} (score: {best_match.score:.3f})")
+                        return {
+                            "status": "success",
+                            "user_id": user_id,
+                            "is_authenticated": True,
+                            "provider": "semantic_cache",
+                            "query": query,
+                            "response": best_match.response,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    else:
+                        score = cache_results[0].score if cache_results else 0
+                        logger.info(f"❌ Auth Cache MISS (score: {score:.3f} < 0.90), falling back to LLM.")
+                except Exception as cache_error:
+                    logger.error(f"⚠️ Auth Cache error, proceeding to LLM: {cache_error}")
+
+            # Step 3: Normal DB RAG Fallback
+            messages, llm, provider, memory = await self.prepare_authenticated_query(
+                user_id, query, provider, currency_symbol, intent=intent
+            )
 
             logger.info(f"🧠 Invoking LLM ({provider}) for authenticated user...")
             response = None
@@ -525,28 +571,22 @@ Response Structure:
         provider: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Smart hybrid RAG flow:
-        1. Embed query → vector search Atlas
-        2a. top_score >= RAG_RELEVANCE_THRESHOLD → answer from document (RAG)
-        2b. top_score <  RAG_RELEVANCE_THRESHOLD → fall back to normal finance AI
-
-        This lets users keep the PDF selected while still asking general
-        finance questions — no need to deselect the document.
-
-        Args:
-            query:    User's question
-            user_id:  For scoping vector search
-            vault_id: Optional — restrict search to one specific vault doc
-            provider: LLM provider override
+        Direct RAG flow — no caching layer:
+        1. Vector search Atlas for relevant chunks
+        2. Build prompt with retrieved context
+        3. Single LLM call with Gemini fallback
         """
         try:
             logger.info("📄 Processing RAG query for user %s (vault=%s)", user_id, vault_id)
-            messages, llm, provider, memory, metadata = await self.prepare_rag_query(query, user_id, vault_id, provider)
+
+            messages, llm, provider, memory, metadata = await self.prepare_rag_query(
+                query, user_id, vault_id, provider
+            )
 
             if metadata.get("no_match", False):
                 logger.info("RAG no_match for query '%s', falling back to DB profile.", query)
                 return await self.process_authenticated_query(user_id, query, provider)
-            
+
             if not metadata.get("is_rag", False):
                 return await self.process_authenticated_query(user_id, query, provider)
 
@@ -562,15 +602,13 @@ Response Structure:
             response_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
-            
+
             # Check if LLM explicitly said it couldn't find the answer
             lower_resp = response_text.lower()
             if "couldn't find" in lower_resp or "not find" in lower_resp or "not found" in lower_resp:
                 logger.info("RAG LLM couldn't find the answer, falling back to DB profile.")
                 return await self.process_authenticated_query(user_id, query, provider)
 
-            # Step 5: Message persistence is now handled strictly by the calling handler
-            # (e.g. websocket handlers.py)
             logger.info("✅ RAG response generated for user %s", user_id)
 
             return {

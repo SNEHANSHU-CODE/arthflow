@@ -26,6 +26,7 @@ class RAGQueryService:
         user_id: str,
         vault_id: Optional[str] = None,
         top_k: int = 5,
+        precomputed_vector: Optional[list] = None,
     ) -> tuple[str, str, float]:
         """
         Main entry point. Embeds query, searches Atlas, returns
@@ -36,6 +37,7 @@ class RAGQueryService:
             user_id:  Scopes search to this user only
             vault_id: Optional — restrict to a specific vault document
             top_k:    Number of chunks to retrieve
+            precomputed_vector: Optional vector to avoid duplicate embedding
 
         Returns:
             (context_str, document_name, top_score)
@@ -43,19 +45,23 @@ class RAGQueryService:
             top_score is 0.0 if nothing found.
         """
         try:
-            # 1. Mask PII in query before embedding
+            # 1. Mask PII in query before embedding (if we need to embed)
             masked_query, query_findings = PIIMasker.mask_with_report(query)
             if query_findings:
                 logger.info(
                     "🔒 PII masked in query — %s",
                     ", ".join(f"{f.pii_type}×{f.count}" for f in query_findings),
                 )
-            # 1. Embed the masked query
-            query_vector = await EmbeddingService.embed_query(masked_query)
+            
+            # 1. Embed the masked query if not precomputed
+            if precomputed_vector is not None:
+                query_vector = precomputed_vector
+            else:
+                query_vector = await EmbeddingService.embed_query(masked_query)
 
-            # 2. Hybrid Search + Reranking
+            # 2. Hybrid Search + Reranking — pass masked_query so BM25 never sees raw PII
             results, top_score = await cls._hybrid_search_and_rerank(
-                query=query,
+                query=masked_query,
                 query_vector=query_vector,
                 user_id=user_id,
                 vault_id=vault_id,
@@ -263,8 +269,11 @@ class RAGQueryService:
             else:
                 break
                 
+        # BM25-only fallback: vector search returned nothing but text search did.
+        # Report a score just above the relevance threshold (0.75) to signal
+        # lower semantic confidence rather than the misleading hardcoded 0.99.
         if not vector_results and text_results:
-            max_vector_score = 0.99
+            max_vector_score = 0.76
             
         return final_results, max_vector_score
 

@@ -1,0 +1,327 @@
+[
+  {
+    "id": "auth_delete_account",
+    "search_variations": [
+      "how do I delete my account?",
+      "can I delete my profile?",
+      "remove my data",
+      "close my account completely",
+      "delete everything"
+    ],
+    "high_quality_answer": "To permanently delete your account, go to **Settings > Privacy > Delete Account**. Please note that this action is irreversible and will permanently remove all your transactions, goals, and Vault documents."
+  },
+  {
+    "id": "auth_change_currency",
+    "search_variations": [
+      "how do I change my currency?",
+      "switch from USD to EUR",
+      "can I use a different currency?",
+      "update currency symbol",
+      "change default money"
+    ],
+    "high_quality_answer": "You can change your default currency at any time. Go to **Settings > Preferences** and select your preferred currency from the dropdown. This will automatically update all your dashboards and historical transactions."
+  },
+  {
+    "id": "auth_vault_limits",
+    "search_variations": [
+      "what is the maximum file size for uploading a PDF to the vault?",
+      "how big can a pdf be?",
+      "vault file size limit",
+      "can I upload large files?",
+      "upload limit for documents"
+    ],
+    "high_quality_answer": "To ensure lightning-fast AI processing, the Vault accepts a maximum file size of exactly **16 MB per upload**. Please compress larger PDFs before uploading them."
+  },
+  {
+    "id": "auth_vault_supported_formats",
+    "search_variations": [
+      "what file types does the vault support?",
+      "can I upload images or word docs?",
+      "supported formats",
+      "does the vault accept excel files?"
+    ],
+    "high_quality_answer": "Currently, the Vault supports **PDF files only**. We are working on adding support for CSV and Excel files for direct transaction imports in a future update."
+  },
+  {
+    "id": "auth_export_data",
+    "search_variations": [
+      "how do I export my transactions?",
+      "can I download my data as CSV?",
+      "export my budget to excel",
+      "download my financial history"
+    ],
+    "high_quality_answer": "You can export all your data directly from the Dashboard. Click on the **Export** button in the top right corner of the Transactions page to download a complete CSV of your financial history."
+  },
+  {
+    "id": "auth_reset_password",
+    "search_variations": [
+      "how do I reset my password?",
+      "change my password",
+      "I want to update my security settings",
+      "forgot my old password"
+    ],
+    "high_quality_answer": "To change your password, go to **Settings > Security** and click 'Change Password'. You will need to enter your current password to authorize the change."
+  },
+  {
+    "id": "auth_app_features",
+    "search_variations": [
+      "what features does this app have?",
+      "how do I use the dashboard?",
+      "what can I do here?",
+      "explain the main features to me"
+    ],
+    "high_quality_answer": "Arthflow provides several powerful tools to manage your finances:\n- **Transactions:** Track your daily income and expenses.\n- **Budgets:** Set limits on specific categories.\n- **Goals:** Track progress toward savings milestones.\n- **Vault:** Upload PDF statements to chat directly with your documents."
+  },
+  {
+    "id": "auth_contact_support",
+    "search_variations": [
+      "how do I contact support?",
+      "I need human help",
+      "customer service email",
+      "talk to a real person",
+      "report a bug or issue"
+    ],
+    "high_quality_answer": "If you need further assistance, you can reach out to our dedicated support team at **support@arthflow.com**. We typically respond within 24 hours."
+  },
+  {
+    "id": "auth_budget_overspend",
+    "search_variations": [
+      "what happens if I go over my budget?",
+      "do I get penalized for overspending?",
+      "exceeding my category limit"
+    ],
+    "high_quality_answer": "If you exceed your budget in a category, Arthflow will visually highlight the overspend in red and send you a notification. There are no penalties, but it helps you stay aware of your spending habits!"
+  },
+  {
+    "id": "auth_smalltalk_hello",
+    "search_variations": [
+      "hi",
+      "hello",
+      "hey there",
+      "good morning",
+      "good evening",
+      "are you a robot?"
+    ],
+    "high_quality_answer": "Hello! I am your AI financial assistant. Since you're logged in, I have secure access to your transactions, budgets, and goals. How can I help you manage your finances today?"
+  },
+  {
+    "id": "auth_manage_goals",
+    "search_variations": [
+      "how do I edit a goal?",
+      "can I change my savings target?",
+      "delete a financial goal",
+      "update goal deadline",
+      "modify savings goal"
+    ],
+    "high_quality_answer": "You can manage your active goals directly from the Goals dashboard. Click the three dots (options menu) next to any goal to edit its target amount, extend the deadline, or delete it entirely if your plans change."
+  },
+  {
+    "id": "auth_manage_reminders",
+    "search_variations": [
+      "how do I mark a bill as paid?",
+      "dismiss a reminder",
+      "clear an overdue alert",
+      "mark reminder complete",
+      "stop reminding me"
+    ],
+    "high_quality_answer": "Arthflow reminders function as calendar alerts rather than checklists. Once a bill is paid, you can either let the reminder naturally expire after its date passes, or manually delete it from the Reminders dashboard by clicking the three dots next to it."
+  },
+  {
+    "id": "auth_budget_edit",
+    "search_variations": [
+      "can I increase my budget midway through the month?",
+      "how to edit a budget",
+      "change my spending limit",
+      "update monthly budget",
+      "decrease budget category"
+    ],
+    "high_quality_answer": "Yes, absolutely! Financial plans change. You can edit your budget limits at any time during the month by navigating to the Budgets page and clicking the 'Edit' button next to the relevant category."
+  },
+  {
+    "id": "auth_mfa_reset",
+    "search_variations": [
+      "what if I lose my phone for MFA?",
+      "cant access my authenticator",
+      "how to reset 2fa",
+      "lost access to OTP",
+      "MFA recovery"
+    ],
+    "high_quality_answer": "If you lose access to your email or authenticator device and cannot log in, please reach out to our security team at **security@arthflow.com**. We will guide you through a manual identity verification process to restore access."
+  },
+  {
+    "id": "auth_vault_privacy",
+    "search_variations": [
+      "does the AI train on my PDFs?",
+      "is the vault secure?",
+      "will others see my documents?",
+      "vault privacy policy",
+      "is my bank statement safe"
+    ],
+    "high_quality_answer": "Your privacy is paramount. **Arthflow's AI does NOT train on your uploaded PDFs.** All documents are stored securely in isolated, encrypted MongoDB instances, and the data is only used temporarily during your active chat session to answer your specific questions."
+  },
+  {
+    "id": "auth_session_management",
+    "search_variations": [
+      "how do I log out of other devices?",
+      "force logout everywhere",
+      "manage active sessions",
+      "did I leave my account logged in at work?",
+      "view logged in devices"
+    ],
+    "high_quality_answer": "To secure your account, go to **Settings > Security > Active Sessions**. From there, you can view all devices currently logged into your account and click 'Terminate All Other Sessions' to instantly log them out."
+  },
+  {
+    "id": "auth_add_transaction_split",
+    "search_variations": [
+      "how do I log a split expense?",
+      "split transaction between categories",
+      "divide a receipt",
+      "two categories one purchase",
+      "split payment"
+    ],
+    "high_quality_answer": "Currently, a single transaction can only have one primary category. To log a split expense (like a receipt with both Groceries and Electronics), we recommend adding two separate transactions for the respective amounts on the same date."
+  },
+  {
+    "id": "auth_unplanned_spending",
+    "search_variations": [
+      "how do I clear unplanned spending from my budget?",
+      "why do I have unplanned expenses?",
+      "remove unplanned category",
+      "fix budget categories",
+      "unbudgeted spending"
+    ],
+    "high_quality_answer": "'Unplanned' spending appears when you log an expense for a category that has no budget set. To clear it, simply go to your Budgets page and create a new budget (even if the limit is small) for that specific category!"
+  },
+  {
+    "id": "auth_theme",
+    "search_variations": [
+      "how to change theme",
+      "switch to dark mode",
+      "light mode toggle",
+      "change app colors",
+      "dark theme"
+    ],
+    "high_quality_answer": "You can customize Arthflow's appearance to suit your style! Navigate to **Settings > Appearance** to switch between Light Mode, Dark Mode, or 'System Default' to match your operating system's theme."
+  },
+  {
+    "id": "auth_vault_delete",
+    "search_variations": [
+      "how do I delete a PDF from the vault?",
+      "remove a document",
+      "delete uploaded file",
+      "clean out vault",
+      "erase my statement"
+    ],
+    "high_quality_answer": "To delete a document, go to the Vault dashboard. Click on the document you wish to remove, and select the 'Delete' option in the top right menu. This instantly deletes the file and permanently erases all associated AI embeddings."
+  },
+  {
+    "id": "auth_transaction_undo",
+    "search_variations": [
+      "can I undo deleting a transaction?",
+      "accidentally deleted expense",
+      "recover deleted transaction",
+      "undo button for deletion",
+      "restore my data"
+    ],
+    "high_quality_answer": "Once a transaction is deleted, it cannot be undone or recovered. However, you can easily add the transaction back manually from the Dashboard using the same amount and date."
+  },
+  {
+    "id": "auth_transaction_edit_date",
+    "search_variations": [
+      "can I change the date of an expense?",
+      "edit transaction date",
+      "wrong date on income",
+      "move expense to another day",
+      "backdate a payment"
+    ],
+    "high_quality_answer": "Yes! If you made a mistake or want to backdate a transaction, locate it in the Transactions list, click the edit icon, and update the date. Your dashboards and budgets will instantly recalculate."
+  },
+  {
+    "id": "auth_goal_priority",
+    "search_variations": [
+      "what does goal priority mean?",
+      "high vs low priority goal",
+      "does priority change anything",
+      "how do goal priorities work",
+      "why set a priority level"
+    ],
+    "high_quality_answer": "Goal Priority (High, Medium, Low) is currently a visual organizational tool to help you focus on what matters most. It visually sorts your goals on the dashboard but does not automatically allocate your funds."
+  },
+  {
+    "id": "auth_budget_rollover",
+    "search_variations": [
+      "does my budget rollover to next month?",
+      "unused budget carry over",
+      "what happens to extra budget money",
+      "save budget for later",
+      "rollover feature"
+    ],
+    "high_quality_answer": "Arthflow currently uses a strict month-to-month budgeting system. Unused budget amounts do not automatically roll over to the next month, encouraging you to start each month with a fresh plan!"
+  },
+  {
+    "id": "auth_multi_currency_transactions",
+    "search_variations": [
+      "can I log expenses in foreign currency?",
+      "different currency for one transaction",
+      "travel expenses currency",
+      "mixed currency budget",
+      "exchange rates"
+    ],
+    "high_quality_answer": "All your transactions and budgets must be entered in your primary default currency. If you travel, we recommend manually converting the foreign expense to your base currency before logging it in Arthflow."
+  },
+  {
+    "id": "auth_overdue_reminders",
+    "search_variations": [
+      "what happens if I miss a reminder?",
+      "overdue bill alert",
+      "past due reminder",
+      "forgot to pay bill",
+      "how long do overdue alerts last"
+    ],
+    "high_quality_answer": "If you miss a reminder date, it will turn red and be marked as 'Overdue' on your dashboard. It will remain visible as a helpful alert until you manually delete it or edit the date."
+  },
+  {
+    "id": "auth_goal_over_100",
+    "search_variations": [
+      "what happens if I save more than my goal target?",
+      "exceed goal amount",
+      "progress bar over 100",
+      "save extra money for goal",
+      "goal surplus"
+    ],
+    "high_quality_answer": "If you add funds that exceed your target amount, the visual progress bar will max out at 100% and turn green, but the 'Saved Amount' text will accurately display your total surplus funds!"
+  },
+  {
+    "id": "auth_share_account",
+    "search_variations": [
+      "can I share my budget with my spouse?",
+      "joint accounts",
+      "add a partner to my account",
+      "multi user budget",
+      "family sharing"
+    ],
+    "high_quality_answer": "Arthflow is currently designed for single-user profiles. While we don't have a formal 'Family Sharing' feature yet, you and your partner can share the same login credentials to track your joint finances."
+  },
+  {
+    "id": "auth_export_filter",
+    "search_variations": [
+      "can I export just one month of data?",
+      "filter export to specific dates",
+      "download only 2023 data",
+      "custom csv export",
+      "export date range"
+    ],
+    "high_quality_answer": "Currently, the Export button downloads your entire transaction history into a comprehensive CSV file. To analyze a specific month, you can easily open the CSV in Excel or Google Sheets and filter by the Date column."
+  },
+  {
+    "id": "auth_pause_account",
+    "search_variations": [
+      "can I pause my account instead of deleting?",
+      "freeze profile",
+      "temporarily deactivate account",
+      "take a break from tracking",
+      "inactive account policy"
+    ],
+    "high_quality_answer": "While there is no formal 'Pause' button, you can simply stop logging in. Your data is completely safe, encrypted, and waiting for you whenever you decide to return. We will never delete an inactive account without notice."
+  }
+]

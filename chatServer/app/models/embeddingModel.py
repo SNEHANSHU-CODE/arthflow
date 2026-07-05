@@ -74,3 +74,25 @@ class EmbeddingSearchResult(BaseModel):
     source: str
     pageNumber: Optional[int] = None
     score: float                        # Atlas returns this as `score` in $vectorSearch
+
+
+class SemanticCacheInsert(BaseModel):
+    """
+    Schema for the Semantic FAQ Cache stored in faq_embeddings collection.
+    Supports two use cases: Guest FAQ and Authenticated (DB-RAG) FAQ.
+    """
+    embedding: List[float]
+    type: str                           # "guest_faq" | "auth_faq"
+    userId: str                         # always "system" for static FAQ caches
+    query: str
+    response: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CacheSearchResult(BaseModel):
+    """Shape returned to the API caller after a semantic cache hit."""
+    type: str
+    query: str
+    response: str
+    score: float

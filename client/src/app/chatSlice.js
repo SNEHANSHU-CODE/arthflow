@@ -262,11 +262,18 @@ const chatSlice = createSlice({
       }
 
       if (isLast) {
-        const msg = state.messages.find(m => m.id === messageId);
-        if (msg) {
-          msg.isStreaming = false;
-          if (response) {
-            msg.message = response;
+        // If the primary stream broke, remove the partial bubble entirely.
+        // The Gemini fallback will open a fresh bubble with a new messageId.
+        const hasStreamError = metadata?.error === 'stream_failed';
+        if (hasStreamError) {
+          state.messages = state.messages.filter(m => m.id !== messageId);
+        } else {
+          const msg = state.messages.find(m => m.id === messageId);
+          if (msg) {
+            msg.isStreaming = false;
+            if (response) {
+              msg.message = response;
+            }
           }
         }
         state.loading = false;

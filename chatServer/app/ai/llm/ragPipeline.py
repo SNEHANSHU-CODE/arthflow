@@ -221,6 +221,7 @@ class RAGPipeline:
 
             # 3. Delete all embeddings for each orphaned vault
             total_deleted = 0
+
             for vid in orphaned_vault_ids:
                 result = await embeddings_col.delete_many({"vaultId": vid})
                 total_deleted += result.deleted_count

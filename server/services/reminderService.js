@@ -54,8 +54,8 @@ class ReminderService {
           const { credentials } = await oauth2Client.refreshAccessToken();
           tokens = credentials;
           
-          // Save the refreshed tokens to Redis/DB using helper
-          await saveTokensComplete(userId, tokens);
+          // Save the refreshed tokens back to Redis using the imported helper
+          await saveGoogleTokens(userId, tokens);
           console.log('Access token refreshed successfully');
         } catch (refreshError) {
           console.error('Failed to refresh access token:', refreshError);

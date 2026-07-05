@@ -174,10 +174,9 @@ GUEST_CHAT_TEMPLATE = ChatPromptTemplate.from_messages([
 # ------------------------------------------------------------------
 
 GUEST_SIGNIN_PROMPT = (
-    "👋 To access personalised insights based on your real transactions, goals, "
-    "and reminders, please sign in.\n\n"
-    "Once signed in, I can analyse your spending patterns, track savings progress, "
-    "and provide tailored financial recommendations."
+    "🔒 **Security Check**\n\n"
+    "I would love to analyze that for you! However, to protect your privacy, I cannot access personal financial data (like your transactions, budgets, or balances) while you are in Guest Mode.\n\n"
+    "To unlock personalized AI insights and full historical tracking, please **Sign In** or **Create an Account** to securely access your Dashboard."
 )
 
 DATA_DEPENDENT_MESSAGE = "This feature requires user authentication."

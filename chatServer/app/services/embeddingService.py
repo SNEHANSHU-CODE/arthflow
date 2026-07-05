@@ -11,7 +11,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from app.core.database import Database
-from app.models.embeddingModel import EmbeddingModel, EmbeddingInsert, EmbeddingSearchResult
+from app.models.embeddingModel import (
+    EmbeddingModel, EmbeddingInsert, EmbeddingSearchResult,
+    SemanticCacheInsert, CacheSearchResult
+)
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -49,6 +52,31 @@ class EmbeddingStorageService:
         except Exception as e:
             logger.error("Error inserting embeddings: %s", e)
             raise
+
+    @classmethod
+    async def insert_faq_batch(cls, embeddings: List[SemanticCacheInsert]) -> List[str]:
+        """Insert a batch of semantic cache embeddings into the FAQ collection."""
+        if not embeddings:
+            return []
+        try:
+            col = Database.faq_embeddings_collection()
+            docs = [emb.model_dump() for emb in embeddings]
+            for doc in docs:
+                if not doc.get("createdAt"):
+                    doc["createdAt"] = datetime.utcnow()
+            result = await col.insert_many(docs)
+            logger.info("Inserted %d semantic cache embeddings", len(result.inserted_ids))
+            return [str(eid) for eid in result.inserted_ids]
+        except Exception as e:
+            logger.error("Error inserting semantic cache embeddings: %s", e)
+            raise
+
+    @classmethod
+    async def insert_auth_faq_batch(cls, embeddings: List[SemanticCacheInsert]) -> List[str]:
+        """Alias for insert_faq_batch to support existing auth script."""
+        return await cls.insert_faq_batch(embeddings)
+        
+
 
     @classmethod
     async def vector_search(
@@ -124,6 +152,86 @@ class EmbeddingStorageService:
 
         except Exception as e:
             logger.error("Error performing vector search: %s", e)
+            raise
+
+    @classmethod
+    async def faq_vector_search(
+        cls,
+        query_embedding: List[float],
+        limit: int = 1,
+    ) -> List[CacheSearchResult]:
+        """Perform vector search on the dedicated FAQ embeddings collection for GUESTS."""
+        return await cls._semantic_cache_search(query_embedding, "guest_faq", limit=limit)
+
+    @classmethod
+    async def auth_faq_vector_search(
+        cls,
+        query_embedding: List[float],
+        limit: int = 1,
+    ) -> List[CacheSearchResult]:
+        """Perform vector search on the dedicated FAQ embeddings collection for AUTH users."""
+        return await cls._semantic_cache_search(query_embedding, "auth_faq", limit=limit)
+        
+
+
+    @classmethod
+    async def _semantic_cache_search(
+        cls,
+        query_embedding: List[float],
+        cache_type: str,
+        user_id: Optional[str] = None,
+        vault_id: Optional[str] = None,
+        limit: int = 1,
+    ) -> List[CacheSearchResult]:
+        """Core semantic cache vector search."""
+        try:
+            col = Database.faq_embeddings_collection()
+            num_candidates = min(limit * 40, 1000)
+
+            # Strict security filters
+            match_filter = {"type": cache_type}
+            if user_id:
+                match_filter["userId"] = str(user_id)
+            if vault_id:
+                match_filter["vaultId"] = str(vault_id)
+
+            pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": settings.VECTOR_INDEX_NAME,
+                        "path": "embedding",
+                        "queryVector": query_embedding,
+                        "numCandidates": num_candidates,
+                        "limit": num_candidates,
+                    }
+                },
+                {
+                    "$match": match_filter
+                },
+                {
+                    "$limit": limit
+                },
+                {
+                    "$project": {
+                        "type": 1,
+                        "query": 1,
+                        "response": 1,
+                        "score": {"$meta": "vectorSearchScore"},
+                    }
+                },
+            ]
+
+            results = []
+            async for doc in col.aggregate(pipeline):
+                results.append(CacheSearchResult(
+                    type=doc["type"],
+                    query=doc["query"],
+                    response=doc["response"],
+                    score=doc["score"],
+                ))
+            return results
+        except Exception as e:
+            logger.error("Error performing semantic cache vector search: %s", e)
             raise
 
     @classmethod

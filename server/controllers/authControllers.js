@@ -602,7 +602,8 @@ class AuthController {
           if (!['arthflow', process.env.MONGO_DB_NAME].filter(Boolean).includes(dbName)) {
             console.warn(`[deleteProfile] Unexpected DB name: ${dbName} — skipping embedding delete`);
           } else {
-            return mongoose.connection.db.collection('embeddings').deleteMany({ userId: userId.toString() });
+            await mongoose.connection.db.collection('embeddings').deleteMany({ userId: userId.toString() });
+            return mongoose.connection.db.collection('faq_embeddings').deleteMany({ userId: userId.toString() });
           }
         })(),
         User.findByIdAndDelete(userId)

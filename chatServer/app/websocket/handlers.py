@@ -11,14 +11,21 @@ Does NOT handle:
 - User data responses
 """
 import logging
+import re
 from typing import Dict, Any
 from datetime import datetime
+import asyncio
+import time
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from app.core.jwt import authenticate_user, get_auth_method_from_user
 from app.services.userService import get_user_service
 from app.websocket.logger import WebSocketLogger
 from app.websocket.response_handler import MessageResponseHandler
 
+from app.services.embeddingService import EmbeddingStorageService
+from app.ai.llm.embeddingService import EmbeddingService
 from app.ai.orchestrator import get_orchestrator
 from app.core.database import Database
 from app.ai.config import llm_settings
@@ -56,6 +63,7 @@ class SocketEventHandlers:
                 "is_authenticated": False,
                 "username": None,
                 "connected_at": datetime.utcnow().isoformat(),
+                "last_message_time": 0.0,
             }
         return self.sessions[sid]
     
@@ -192,10 +200,27 @@ class SocketEventHandlers:
         try:
             data = data or {}
             message = data.get("message", "").strip()
-            conversation_history = data.get("conversationHistory", [])
+            # conversationHistory from client is intentionally ignored.
+            # History is fetched securely from MongoDB via ChatMemory.
             request_id = data.get("requestId")
+
+            # A-1: Validate vault_id format before use
             vault_id = data.get("vault_id") or None  # RAG mode if set
-            currency_symbol = data.get("currencySymbol", "₹")
+            if vault_id:
+                try:
+                    ObjectId(vault_id)  # format check only
+                except (InvalidId, TypeError):
+                    await self.sio.emit('error', {
+                        "message": "Invalid vault ID.",
+                        "code": "INVALID_VAULT_ID",
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }, room=sid)
+                    return
+
+            # L-1: Allowlist currencySymbol to block prompt injection
+            _ALLOWED_CURRENCY = re.compile(r'^[\$\€\£\¥\₹\₩\₪\₺\₦\฿]{1,5}$')
+            raw_currency = data.get("currencySymbol", "₹")
+            currency_symbol = raw_currency if _ALLOWED_CURRENCY.match(str(raw_currency)) else "₹"
             
             # Validate message
             if not message:
@@ -205,6 +230,28 @@ class SocketEventHandlers:
                     "timestamp": datetime.utcnow().isoformat(),
                 }, room=sid)
                 return
+                
+            # Message Length Limiter (Prompt Bombing Protection)
+            if len(message) > 500:
+                await self.sio.emit('error', {
+                    "message": "Message is too long. Please keep it under 500 characters.",
+                    "code": "MESSAGE_TOO_LONG",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }, room=sid)
+                return
+
+            # Rate Limiter (DDoS Protection)
+            session = self.get_session(sid)
+            current_time = time.time()
+            if current_time - session.get("last_message_time", 0.0) < 1.0:
+                await self.sio.emit('error', {
+                    "message": "You are sending messages too quickly. Please wait a moment.",
+                    "code": "RATE_LIMIT_EXCEEDED",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }, room=sid)
+                return
+            session["last_message_time"] = current_time
+            
             
             # Send typing indicator
             await self.sio.emit('bot_typing', {
@@ -290,25 +337,49 @@ class SocketEventHandlers:
                 else:
                     # Guest Mode
                     intent_result = classify(masked_msg)
+                    
+                    # Check for explicit personal data requests FIRST
+                    # We removed the bare word "my" to avoid false positives on FAQs like "How do I delete my account?"
                     needs_data = intent_result.requires_auth or any(
                         keyword in masked_msg.lower()
-                        for keyword in ["my", "i spent", "my transactions", "my goals", "my budget", "my history", "how much did i"]
+                        for keyword in ["i spent", "my transactions", "my goals", "my budget", "my history", "how much did i", "my balance", "my spending"]
                     )
+                    
                     if needs_data:
                         is_static_guest_response = True
                         static_guest_text = GUEST_SIGNIN_PROMPT
                         provider = "informational"
                         metadata = {"response_type": "guest", "needs_authentication": True}
                     else:
-                        prompt_vars = GuestPromptBuilder.build_guest_prompt(user_input=masked_msg)
-                        system_prompt = GUEST_SYSTEM_PROMPT.format(**prompt_vars)
-                        messages = [
-                            SystemMessage(content=system_prompt),
-                            HumanMessage(content=masked_msg)
-                        ]
-                        provider = llm_settings.DEFAULT_LLM
-                        llm = await llm_provider.get_default_llm()
-                        metadata = {"response_type": "guest", "needs_authentication": False}
+                        # ==== SEMANTIC CACHE LOOKUP ====
+                        cache_hit = False
+                        try:
+                            query_emb = await EmbeddingService.embed_query(masked_msg)
+                            results = await EmbeddingStorageService.faq_vector_search(
+                                query_embedding=query_emb,
+                                limit=1
+                            )
+                            if results and results[0].score >= 0.85:
+                                cache_hit = True
+                                is_static_guest_response = True
+                                static_guest_text = results[0].response
+                                provider = "cache"
+                                metadata = {"response_type": "guest_cache", "needs_authentication": False}
+                                logger.info(f"✅ Semantic Cache hit for guest query: '{masked_msg}' (score: {results[0].score:.2f})")
+                        except Exception as e:
+                            logger.error(f"Semantic Cache lookup failed: {e}")
+                            
+                        if not cache_hit:
+                            # ==== FALLBACK TO LLM ====
+                            prompt_vars = GuestPromptBuilder.build_guest_prompt(user_input=masked_msg)
+                            system_prompt = GUEST_SYSTEM_PROMPT.format(**prompt_vars)
+                            messages = [
+                                SystemMessage(content=system_prompt),
+                                HumanMessage(content=masked_msg)
+                            ]
+                            provider = llm_settings.DEFAULT_LLM
+                            llm = await llm_provider.get_default_llm()
+                            metadata = {"response_type": "guest", "needs_authentication": False}
 
                 # Stop typing immediately since streaming starts
                 await self.sio.emit('bot_typing', {
@@ -333,16 +404,20 @@ class SocketEventHandlers:
                 accumulated_text = prefix_text
 
                 if is_static_guest_response:
-                    accumulated_text += static_guest_text
-                    await self.sio.emit('bot_response_chunk', {
-                        "messageId": message_id,
-                        "chunk": static_guest_text,
-                        "isFirst": False,
-                        "isLast": False,
-                        "provider": provider,
-                        "metadata": None,
-                        "timestamp": datetime.utcnow().isoformat(),
-                    }, room=sid)
+                    words = static_guest_text.split(" ")
+                    for i, word in enumerate(words):
+                        chunk = word + (" " if i < len(words) - 1 else "")
+                        accumulated_text += chunk
+                        await self.sio.emit('bot_response_chunk', {
+                            "messageId": message_id,
+                            "chunk": chunk,
+                            "isFirst": False,
+                            "isLast": False,
+                            "provider": provider,
+                            "metadata": None,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }, room=sid)
+                        await asyncio.sleep(0.015)
                 else:
                     # Stream tokens from LLM
                     try:
@@ -425,31 +500,41 @@ class SocketEventHandlers:
                         "timestamp": datetime.utcnow().isoformat(),
                     }, room=sid)
                     
-                    # Fetch DB context
-                    db_messages, db_llm, db_provider, db_memory = await orchestrator.prepare_authenticated_query(
-                        user_id=user_id,
-                        query=masked_msg,
-                        currency_symbol=currency_symbol,
-                    )
-                    
-                    # Stream DB response into the same bubble
+                    # A-2: Fetch DB context with timeout guard
+                    db_messages = None
+                    db_llm = None
+                    db_provider = provider
                     try:
-                        async for chunk in db_llm.astream(db_messages):
-                            token = chunk.content if hasattr(chunk, 'content') else str(chunk)
-                            accumulated_text += token
-                            await self.sio.emit('bot_response_chunk', {
-                                "messageId": message_id,
-                                "chunk": token,
-                                "isFirst": False,
-                                "isLast": False,
-                                "provider": db_provider,
-                                "metadata": None,
-                                "timestamp": datetime.utcnow().isoformat(),
-                            }, room=sid)
-                        provider = db_provider
-                        metadata["response_type"] = "authenticated_fallback"
-                    except Exception as fallback_stream_err:
-                        logger.error(f"Fallback stream during pivot failed: {fallback_stream_err}")
+                        db_messages, db_llm, db_provider, db_memory = await asyncio.wait_for(
+                            orchestrator.prepare_authenticated_query(
+                                user_id=user_id,
+                                query=masked_msg,
+                                currency_symbol=currency_symbol,
+                            ),
+                            timeout=15.0
+                        )
+                    except asyncio.TimeoutError:
+                        logger.error("Pivot DB fallback timed out for user %s — skipping pivot", user_id)
+
+                    # Stream DB response into the same bubble (only if fetch succeeded)
+                    if db_messages and db_llm:
+                        try:
+                            async for chunk in db_llm.astream(db_messages):
+                                token = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                                accumulated_text += token
+                                await self.sio.emit('bot_response_chunk', {
+                                    "messageId": message_id,
+                                    "chunk": token,
+                                    "isFirst": False,
+                                    "isLast": False,
+                                    "provider": db_provider,
+                                    "metadata": None,
+                                    "timestamp": datetime.utcnow().isoformat(),
+                                }, room=sid)
+                            provider = db_provider
+                            metadata["response_type"] = "authenticated_fallback"
+                        except Exception as fallback_stream_err:
+                            logger.error(f"Fallback stream during pivot failed: {fallback_stream_err}")
                 # ------------------------------------
 
                 # Save complete messages to MongoDB
