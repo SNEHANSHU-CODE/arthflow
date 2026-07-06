@@ -21,7 +21,8 @@ FEATURE_SUMMARY = (
     "Arthflow includes:\n"
     "1) Transactions — log income and expenses with categories and dates.\n"
     "2) Goals — create savings targets and track progress.\n"
-    "3) Reminders — set alerts for bills and financial tasks."
+    "3) Reminders — set alerts for bills and financial tasks.\n"
+    "4) Vault — upload PDF (.pdf), CSV (.csv), and Excel (.xls, .xlsx) files up to 16MB to chat with documents."
 )
 
 # ------------------------------------------------------------------

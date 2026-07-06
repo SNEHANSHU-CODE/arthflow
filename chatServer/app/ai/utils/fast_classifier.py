@@ -41,29 +41,26 @@ class FastIntentClassifier:
             "keywords": [
                 "transaction", "expense", "income", "spending", "spent",
                 "cost", "price", "paid", "payment", "charge", "receipt",
-                "money", "cash", "card", "transfer", "buy", "purchase",
-                "how much", "total", "sum", "balance", "account", "history",
-                "category", "merchant", "date", "amount", "last", "recent",
-                "previous", "when", "where", "what"
+                "transfer", "buy", "purchase",
+                "total", "sum", "balance", "account", "history",
+                "category", "merchant", "amount", "last", "recent"
             ],
             "requires_auth": True,  # Requires user data
         },
         
         "goals": {
             "keywords": [
-                "goal", "target", "save", "saving", "savings target",
+                "goal", "target", "saving", "savings target",
                 "milestone", "objective", "achievement", "reach", "accumulate",
-                "fund", "budget", "plan", "progress", "track",
-                "how long", "will i", "can i", "should i"
+                "progress", "track"
             ],
             "requires_auth": True,
         },
         
         "reminders": {
             "keywords": [
-                "reminder", "remind", "alert", "notification", "notify",
-                "schedule", "set", "alarm", "upcoming", "due", "payment due",
-                "when", "tell me", "notify", "remember"
+                "reminder", "remind", "alert", "notification",
+                "upcoming", "due", "payment due", "remember"
             ],
             "requires_auth": False,
         },

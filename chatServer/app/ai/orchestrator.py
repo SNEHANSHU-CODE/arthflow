@@ -421,8 +421,8 @@ Response Structure:
                 intent.get("needs_budgets", False)
             ])
             
-            if is_general and not needs_data:
-                logger.info("ℹ️ General intent detected. Checking Authenticated FAQ Semantic Cache...")
+            if not needs_data:
+                logger.info("ℹ️ No specific financial data needed. Checking Authenticated FAQ Semantic Cache...")
                 try:
                     from app.ai.llm.embeddingService import EmbeddingService
                     from app.services.embeddingService import EmbeddingStorageService
@@ -430,7 +430,7 @@ Response Structure:
                     query_embedding = await EmbeddingService.embed_query(query)
                     cache_results = await EmbeddingStorageService.auth_faq_vector_search(query_embedding, limit=1)
                     
-                    if cache_results and cache_results[0].score >= 0.90:
+                    if cache_results and cache_results[0].score >= 0.85:
                         best_match = cache_results[0]
                         logger.info(f"✅ Auth Cache HIT for: {best_match.query} (score: {best_match.score:.3f})")
                         return {
@@ -444,7 +444,7 @@ Response Structure:
                         }
                     else:
                         score = cache_results[0].score if cache_results else 0
-                        logger.info(f"❌ Auth Cache MISS (score: {score:.3f} < 0.90), falling back to LLM.")
+                        logger.info(f"❌ Auth Cache MISS (score: {score:.3f} < 0.85), falling back to LLM.")
                 except Exception as cache_error:
                     logger.error(f"⚠️ Auth Cache error, proceeding to LLM: {cache_error}")
 

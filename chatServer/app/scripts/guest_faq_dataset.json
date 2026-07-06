@@ -86,25 +86,13 @@
   {
     "id": "faq_auth_data_retention",
     "category": "auth",
-    "high_quality_answer": "When you delete your account, we don't keep anything. All transactions, budgets, goals, reminders, uploaded vault files, active sessions, notifications, chat history, and vector embeddings are instantly and permanently erased.",
+    "high_quality_answer": "When you delete your account, we don't keep anything. All your personal data—including transactions, budgets, goals, vault files, and chat history—is instantly and permanently erased.",
     "search_variations": [
       "What happens when I delete my account?",
       "do you keep my data if i leave",
       "cascading deletion policy",
       "is my data really gone",
       "data retention policy"
-    ]
-  },
-  {
-    "id": "faq_auth_data_export",
-    "category": "auth",
-    "high_quality_answer": "You own your data! You can export all your personal financial information as a complete JSON file at any time via the Settings menu.",
-    "search_variations": [
-      "Can I download my data?",
-      "export financial records",
-      "get a copy of my data",
-      "backup my account",
-      "download all my transactions"
     ]
   },
   {
@@ -134,7 +122,7 @@
   {
     "id": "faq_core_transaction_categories",
     "category": "core",
-    "high_quality_answer": "We provide predefined categories to make tracking easy. There are 11 distinct expense categories (like Groceries, Rent, Utilities) and 5 income categories to choose from when logging transactions.",
+    "high_quality_answer": "We provide predefined categories to make tracking easy. There are 11 distinct expense categories (like Food, Rent, Utilities) and 5 income categories to choose from when logging transactions.",
     "search_variations": [
       "What are the expense categories?",
       "how do categories work",
@@ -188,7 +176,7 @@
       "add funds to my savings",
       "see how close i am to my target",
       "goal completion percentage",
-      "days left on my goal"
+      "how does goal tracking work"
     ]
   },
   {
@@ -222,9 +210,9 @@
     "search_variations": [
       "What is on the dashboard?",
       "financial overview",
-      "where can i see my net balance",
       "monthly summary view",
-      "savings rate chart"
+      "savings rate chart",
+      "what does the home screen show"
     ]
   },
   {
@@ -233,10 +221,10 @@
     "high_quality_answer": "While the AI Chatbot limits analysis to a capped number of recent records for speed, your Dashboard provides full, unrestricted access to your entire historical transaction history and long-term trends.",
     "search_variations": [
       "How far back can I see my transactions?",
-      "view all history",
       "long term trend analysis",
-      "historical spending",
-      "where is my old data"
+      "where is my old data",
+      "can i see older records on the dashboard",
+      "does the dashboard show full history"
     ]
   },
   {
@@ -278,7 +266,7 @@
   {
     "id": "faq_vault_passwords",
     "category": "vault",
-    "high_quality_answer": "Yes, we fully support password-protected bank statements! When uploading an encrypted PDF, you can securely provide the password. We use this solely to unlock the file for AI processing and never save it inappropriately.",
+    "high_quality_answer": "Yes, we fully support password-protected bank statements! When uploading an encrypted PDF, you can securely provide the password. We use this solely to unlock the file for AI processing and never store the password.",
     "search_variations": [
       "Can I upload locked PDFs?",
       "my bank statement has a password",
@@ -326,7 +314,7 @@
   {
     "id": "faq_ai_data_truncation",
     "category": "ai",
-    "high_quality_answer": "To provide the fastest, most accurate answers, the AI is shown a capped snapshot of your most recent data (e.g., the last 30 days or up to 20 transactions). For massive bulk historical analysis, please use your Dashboard.",
+    "high_quality_answer": "To provide the fastest, most accurate answers, the AI is shown a capped snapshot of your most recent data (e.g., the last 30 days or up to 30 transactions). For full historical analysis, please use your Dashboard.",
     "search_variations": [
       "Why can't the AI see my transaction from two years ago?",
       "data truncation limits",
@@ -350,7 +338,7 @@
   {
     "id": "faq_ai_resilience",
     "category": "ai",
-    "high_quality_answer": "Our AI Chatbot is highly reliable. If our primary LLM provider experiences an outage or fails to respond, the system automatically falls back to an alternative model (like Google Gemini) to ensure zero downtime.",
+    "high_quality_answer": "Our AI Chatbot is highly reliable. If our primary LLM provider experiences an outage or fails to respond, the system automatically falls back to Google Gemini to ensure continuous availability.",
     "search_variations": [
       "What happens if the AI goes down?",
       "chatbot reliability",
@@ -398,7 +386,7 @@
   {
     "id": "faq_general_pricing",
     "category": "pricing",
-    "high_quality_answer": "Arthflow's core features—including expense tracking, basic budgeting, and goal setting—are completely free to use. Premium AI capabilities may have specific rate limits depending on server load.",
+    "high_quality_answer": "Arthflow's core features — including expense tracking, budgeting, and goal setting — are completely free to use.",
     "search_variations": [
       "Is this app free to use?",
       "pricing model",
@@ -657,6 +645,88 @@
       "See you later",
       "Thanks for the help",
       "Talk to you later"
+    ]
+  },
+  {
+    "id": "faq_redirect_transactions",
+    "category": "auth_redirect",
+    "high_quality_answer": "🔒 To view your transaction history and spending data, you need to be signed in. Please Sign In or Create an Account to access your personal financial records.",
+    "search_variations": [
+      "show me my transaction history",
+      "my recent transactions",
+      "what did i spend last month",
+      "show my expenses",
+      "list my transactions",
+      "view my spending history",
+      "download all my transactions",
+      "export financial records",
+      "get a copy of my data"
+    ]
+  },
+  {
+    "id": "faq_redirect_balance",
+    "category": "auth_redirect",
+    "high_quality_answer": "🔒 Your account balance and income summary are personal to you. Please Sign In or Create an Account to view your net balance and financial overview.",
+    "search_variations": [
+      "what is my balance",
+      "show my account balance",
+      "what is my net worth",
+      "how much money do i have",
+      "my current balance",
+      "my total savings",
+      "how much have i saved"
+    ]
+  },
+  {
+    "id": "faq_redirect_budget",
+    "category": "auth_redirect",
+    "high_quality_answer": "🔒 Your budget data is tied to your account. Please Sign In or Create an Account to view your budget limits, remaining amounts, and spending breakdown.",
+    "search_variations": [
+      "show my budget",
+      "what is my budget",
+      "how much budget do i have left",
+      "my remaining budget",
+      "am i over budget",
+      "my monthly spending limit"
+    ]
+  },
+  {
+    "id": "faq_redirect_goals",
+    "category": "auth_redirect",
+    "high_quality_answer": "🔒 Your savings goals are stored in your account. Please Sign In or Create an Account to track your goal progress, contributions, and target dates.",
+    "search_variations": [
+      "show my goals",
+      "what are my savings goals",
+      "my goal progress",
+      "how close am i to my goal",
+      "my financial targets",
+      "days left on my goal"
+    ]
+  },
+  {
+    "id": "faq_redirect_reminders",
+    "category": "auth_redirect",
+    "high_quality_answer": "🔒 Your reminders and upcoming bills are personal to your account. Please Sign In or Create an Account to view and manage your scheduled payment reminders.",
+    "search_variations": [
+      "show my reminders",
+      "what are my upcoming reminders",
+      "my upcoming bills",
+      "upcoming payment alerts",
+      "what bills are due",
+      "my scheduled reminders"
+    ]
+  },
+  {
+    "id": "faq_redirect_income",
+    "category": "auth_redirect",
+    "high_quality_answer": "🔒 Your income records are linked to your account. Please Sign In or Create an Account to view your income history and monthly earnings.",
+    "search_variations": [
+      "show my income",
+      "what is my income",
+      "my monthly income",
+      "how much did i earn",
+      "my salary records",
+      "income this month"
     ]
   }
 ]

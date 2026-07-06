@@ -34,7 +34,8 @@ ArthFlow is a full-stack web application that gives users a complete picture of 
 - Goals progress with deadline tracking
 
 ### 🤖 AI & RAG
-- **Context-aware AI chat** about your finances using Google Gemini
+- **Real-time AI chat** via WebSockets (Socket.IO) and Google Gemini
+- **Semantic Caching** for lightning-fast, zero-cost FAQ responses
 - **RAG pipeline** — upload documents to your Vault, ask questions about them
 - Vault supports PDF, CSV, XLSX — embeddings auto-generated every 5 minutes
 - PII masking before embedding — sensitive data never stored in vector DB
@@ -79,8 +80,8 @@ ArthFlow is a full-stack web application that gives users a complete picture of 
          |                        │
          |               ┌───────────────────┐     ┌──────────────────┐
          └──────────────▶│   Python AI Server│────▶│  MongoDB Atlas   │
-                         │  FastAPI + RAG    │     │  Vector Search   │
-                         │  Gemini Embedding │     └──────────────────┘
+                         │FastAPI + Socket.IO│     │  Vector Search   │
+                         │ Gemini + SemCache │     └──────────────────┘
                          └───────────────────┘
 ```
 
@@ -95,7 +96,7 @@ ArthFlow is a full-stack web application that gives users a complete picture of 
 | **Frontend** | React 18, Redux Toolkit, Bootstrap 5, Recharts, Axios |
 | **Main Server** | Node.js, Express, Mongoose, JWT, Bcrypt, Resend |
 | **Analytics Server** | Node.js, Apollo Server, GraphQL, PDFMake |
-| **AI / RAG Server** | Python, FastAPI, LangChain, Google Gemini, Motor (async MongoDB) |
+| **AI / RAG Server** | Python, FastAPI, Socket.IO, LangChain, Google Gemini, Motor |
 | **Database** | MongoDB Atlas (Vector Search enabled) |
 | **Auth** | JWT (RS256), HTTP-only cookies, Google OAuth 2.0 |
 | **Email** | Resend |
@@ -129,11 +130,13 @@ finance-tracker/
 │
 └── chatServer/              # Python RAG + AI server
     ├── app/
-    │   ├── ai/              # Gemini, RAG pipeline, embeddings
+    │   ├── ai/              # Gemini, RAG pipeline, semantic cache
     │   ├── models/          # Pydantic schemas
     │   ├── services/        # Vault, embedding storage
-    │   └── utils/           # PII masker, OCR
-    └── main.py
+    │   ├── utils/           # PII masker, OCR
+    │   ├── websocket/       # Socket.IO real-time handlers
+    │   └── main.py          # FastAPI application factory
+    └── run.py               # Uvicorn entry point
 ```
 
 ---
@@ -157,7 +160,7 @@ finance-tracker/
 |---|---|---|
 | Main API | `/api/` | REST |
 | Analytics | `/graphql` | GraphQL |
-| AI / Chat | `/api/chat`, `/api/rag`, `/api/import` | REST |
+| AI / Chat | `/socket.io` (Chat), `/api/import` (REST) | WebSocket & REST |
 
 ---
 

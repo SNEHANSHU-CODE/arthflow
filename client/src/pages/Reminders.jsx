@@ -67,11 +67,12 @@ export default function Reminders() {
   }, [dispatch]);
 
   const handleDateClick = (info) => {
-    const clickedDate = new Date(info.dateStr);
+    const clickedDateStr = info.dateStr; // e.g., "2026-07-06"
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Format local today as YYYY-MM-DD
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    if (clickedDate < today) {
+    if (clickedDateStr < todayStr) {
       showToast('You cannot set reminders for past dates', 'warning');
       return;
     }

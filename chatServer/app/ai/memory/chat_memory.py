@@ -91,8 +91,10 @@ class ChatMemory:
         except Exception as e:
             logger.error("ChatMemory.add_message — chat_history write failed: %s", e)
 
-        # Always write to training_logs regardless of chat_history result
-        await self._write_training_log(content, message_type, metadata)
+        # Only write LLM responses to training_logs (skip semantic cache hits)
+        provider = metadata.get("provider", "")
+        if provider not in ["cache", "semantic_cache"]:
+            await self._write_training_log(content, message_type, metadata)
 
     async def get_conversation_history(self) -> List[BaseMessage]:
         """

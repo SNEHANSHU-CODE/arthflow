@@ -38,9 +38,10 @@
       "what file types does the vault support?",
       "can I upload images or word docs?",
       "supported formats",
-      "does the vault accept excel files?"
+      "does the vault accept excel files?",
+      "can i upload a csv to vault"
     ],
-    "high_quality_answer": "Currently, the Vault supports **PDF files only**. We are working on adding support for CSV and Excel files for direct transaction imports in a future update."
+    "high_quality_answer": "The Vault supports **PDF (`.pdf`)**, **CSV (`.csv`)**, and **Excel (`.xls`, `.xlsx`)** files. This lets you upload everything from bank statements to transaction exports and chat with your data instantly."
   },
   {
     "id": "auth_export_data",
@@ -50,7 +51,7 @@
       "export my budget to excel",
       "download my financial history"
     ],
-    "high_quality_answer": "You can export all your data directly from the Dashboard. Click on the **Export** button in the top right corner of the Transactions page to download a complete CSV of your financial history."
+    "high_quality_answer": "You can download a financial report directly from the **Analytics page**. Choose from three preset time ranges — **Last 30 Days**, **Last 90 Days**, or **Last 1 Year** — and download it as a report file."
   },
   {
     "id": "auth_reset_password",
@@ -81,7 +82,7 @@
       "talk to a real person",
       "report a bug or issue"
     ],
-    "high_quality_answer": "If you need further assistance, you can reach out to our dedicated support team at **support@arthflow.com**. We typically respond within 24 hours."
+    "high_quality_answer": "If you need further assistance, please reach out to us at **arthflow0@gmail.com**. The AI chatbot is also available to help you navigate features and troubleshoot common problems."
   },
   {
     "id": "auth_budget_overspend",
@@ -146,7 +147,7 @@
       "lost access to OTP",
       "MFA recovery"
     ],
-    "high_quality_answer": "If you lose access to your email or authenticator device and cannot log in, please reach out to our security team at **security@arthflow.com**. We will guide you through a manual identity verification process to restore access."
+    "high_quality_answer": "MFA in Arthflow is delivered via OTP to your **registered email address** — not an authenticator app. If you have lost access to your email, please use your email provider's account recovery. Once back in your email, you can re-enable MFA from **Settings > Security**."
   },
   {
     "id": "auth_vault_privacy",
@@ -300,7 +301,7 @@
       "multi user budget",
       "family sharing"
     ],
-    "high_quality_answer": "Arthflow is currently designed for single-user profiles. While we don't have a formal 'Family Sharing' feature yet, you and your partner can share the same login credentials to track your joint finances."
+    "high_quality_answer": "Arthflow is currently designed for single-user profiles. There is no formal 'Family Sharing' or joint-account feature at this time. Each person should maintain their own separate account for accurate personal finance tracking."
   },
   {
     "id": "auth_export_filter",
@@ -311,7 +312,7 @@
       "custom csv export",
       "export date range"
     ],
-    "high_quality_answer": "Currently, the Export button downloads your entire transaction history into a comprehensive CSV file. To analyze a specific month, you can easily open the CSV in Excel or Google Sheets and filter by the Date column."
+    "high_quality_answer": "The **Analytics page** lets you download a financial report for three preset ranges: **Last 30 Days**, **Last 90 Days**, or **Last 1 Year**. For a specific month, choose the closest available range and open the downloaded file to filter further."
   },
   {
     "id": "auth_pause_account",

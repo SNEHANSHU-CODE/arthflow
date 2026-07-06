@@ -278,7 +278,7 @@ googleRouter.get('/callback', async (req, res) => {
 googleRouter.get('/status', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId.toString();
-    const { getGoogleTokens } = require('../utils/googleTokenCache');
+    const { getGoogleTokens, deleteGoogleTokens } = require('../utils/googleTokenCache');
     
     // Check Redis for tokens
     const tokens = await getGoogleTokens(userId);
@@ -288,7 +288,20 @@ googleRouter.get('/status', authenticateToken, async (req, res) => {
     const user = await User.findById(userId).select('+googleRefreshToken');
     const hasRefreshToken = !!(user && user.googleRefreshToken);
     
-    const isConnected = hasRedisTokens || hasRefreshToken;
+    let isConnected = hasRedisTokens || hasRefreshToken;
+
+    // If we have tokens, let's validate them by getting an authorized client
+    if (isConnected) {
+      try {
+        await getAuthorizedClient(userId);
+      } catch (err) {
+        console.warn(`[GoogleCalendar] Token validation failed for user ${userId}:`, err.message);
+        isConnected = false;
+        // Clean up invalid tokens
+        await deleteGoogleTokens(userId);
+        await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
+      }
+    }
     
     console.log(`📊 Connection status for user ${userId}:`, {
       connected: isConnected,

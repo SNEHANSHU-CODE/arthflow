@@ -328,58 +328,80 @@ class SocketEventHandlers:
                         metadata["response_type"] = "authenticated"
                 elif is_authenticated:
                     # Standard Authenticated Mode
-                    messages, llm, provider, memory = await orchestrator.prepare_authenticated_query(
-                        user_id=user_id,
-                        query=masked_msg,
-                        currency_symbol=currency_symbol,
-                    )
-                    metadata = {"response_type": "authenticated"}
-                else:
-                    # Guest Mode
-                    intent_result = classify(masked_msg)
+                    # 1. ==== SEMANTIC CACHE ====
+                    cache_hit = False
+                    is_static_auth_response = False
+                    static_auth_text = ""
                     
-                    # Check for explicit personal data requests FIRST
-                    # We removed the bare word "my" to avoid false positives on FAQs like "How do I delete my account?"
-                    needs_data = intent_result.requires_auth or any(
-                        keyword in masked_msg.lower()
-                        for keyword in ["i spent", "my transactions", "my goals", "my budget", "my history", "how much did i", "my balance", "my spending"]
-                    )
-                    
-                    if needs_data:
-                        is_static_guest_response = True
-                        static_guest_text = GUEST_SIGNIN_PROMPT
-                        provider = "informational"
-                        metadata = {"response_type": "guest", "needs_authentication": True}
-                    else:
-                        # ==== SEMANTIC CACHE LOOKUP ====
-                        cache_hit = False
-                        try:
+                    try:
+                        from app.ai.orchestrator import _classify_intent
+                        intent = await _classify_intent(masked_msg)
+                        needs_data = any([
+                            intent.get("needs_transactions", False),
+                            intent.get("needs_goals", False),
+                            intent.get("needs_reminders", False),
+                            intent.get("needs_budgets", False)
+                        ])
+                        
+                        if not needs_data:
                             query_emb = await EmbeddingService.embed_query(masked_msg)
-                            results = await EmbeddingStorageService.faq_vector_search(
+                            results = await EmbeddingStorageService.auth_faq_vector_search(
                                 query_embedding=query_emb,
                                 limit=1
                             )
                             if results and results[0].score >= 0.85:
                                 cache_hit = True
-                                is_static_guest_response = True
-                                static_guest_text = results[0].response
-                                provider = "cache"
-                                metadata = {"response_type": "guest_cache", "needs_authentication": False}
-                                logger.info(f"✅ Semantic Cache hit for guest query: '{masked_msg}' (score: {results[0].score:.2f})")
-                        except Exception as e:
-                            logger.error(f"Semantic Cache lookup failed: {e}")
-                            
-                        if not cache_hit:
-                            # ==== FALLBACK TO LLM ====
-                            prompt_vars = GuestPromptBuilder.build_guest_prompt(user_input=masked_msg)
-                            system_prompt = GUEST_SYSTEM_PROMPT.format(**prompt_vars)
-                            messages = [
-                                SystemMessage(content=system_prompt),
-                                HumanMessage(content=masked_msg)
-                            ]
-                            provider = llm_settings.DEFAULT_LLM
-                            llm = await llm_provider.get_default_llm()
-                            metadata = {"response_type": "guest", "needs_authentication": False}
+                                is_static_auth_response = True
+                                static_auth_text = results[0].response
+                                provider = "semantic_cache"
+                                metadata = {"response_type": "authenticated_cache"}
+                                logger.info(f"✅ Auth Cache hit: '{masked_msg}' (score: {results[0].score:.2f})")
+                    except Exception as e:
+                        logger.error(f"Auth Cache lookup failed: {e}")
+
+                    if not cache_hit:
+                        messages, llm, provider, memory = await orchestrator.prepare_authenticated_query(
+                            user_id=user_id,
+                            query=masked_msg,
+                            currency_symbol=currency_symbol,
+                            intent=intent if 'intent' in locals() else None,
+                        )
+                        metadata = {"response_type": "authenticated"}
+                else:
+                    # Guest Mode — Order: Cache → LLM
+                    # The cache handles both: FAQ answers AND auth redirects (via faq_redirect_* entries).
+                    # The LLM is the last resort only for truly unknown questions.
+
+                    # 1. ==== SEMANTIC CACHE (zero token cost) ====
+                    cache_hit = False
+                    try:
+                        query_emb = await EmbeddingService.embed_query(masked_msg)
+                        results = await EmbeddingStorageService.faq_vector_search(
+                            query_embedding=query_emb,
+                            limit=1
+                        )
+                        if results and results[0].score >= 0.85:
+                            cache_hit = True
+                            is_static_guest_response = True
+                            static_guest_text = results[0].response
+                            provider = "cache"
+                            metadata = {"response_type": "guest_cache", "needs_authentication": False}
+                            logger.info(f"✅ Semantic Cache hit for guest query: '{masked_msg}' (score: {results[0].score:.2f})")
+                    except Exception as e:
+                        logger.error(f"Semantic Cache lookup failed: {e}")
+
+                    if not cache_hit:
+                        # 2. ==== LLM FALLBACK ====
+                        # Guest system prompt instructs the LLM to redirect personal data queries.
+                        prompt_vars = GuestPromptBuilder.build_guest_prompt(user_input=masked_msg)
+                        system_prompt = GUEST_SYSTEM_PROMPT.format(**prompt_vars)
+                        messages = [
+                            SystemMessage(content=system_prompt),
+                            HumanMessage(content=masked_msg)
+                        ]
+                        provider = llm_settings.DEFAULT_LLM
+                        llm = await llm_provider.get_default_llm()
+                        metadata = {"response_type": "guest", "needs_authentication": False}
 
                 # Stop typing immediately since streaming starts
                 await self.sio.emit('bot_typing', {
@@ -403,8 +425,8 @@ class SocketEventHandlers:
 
                 accumulated_text = prefix_text
 
-                if is_static_guest_response:
-                    words = static_guest_text.split(" ")
+                if is_static_guest_response or locals().get('is_static_auth_response', False):
+                    words = static_guest_text.split(" ") if is_static_guest_response else static_auth_text.split(" ")
                     for i, word in enumerate(words):
                         chunk = word + (" " if i < len(words) - 1 else "")
                         accumulated_text += chunk

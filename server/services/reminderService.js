@@ -179,7 +179,10 @@ class ReminderService {
     if (!reminder) throw new Error('Reminder not found');
 
     if (data.title !== undefined) reminder.title = data.title.trim();
-    if (data.date !== undefined) reminder.date = new Date(data.date);
+    if (data.date !== undefined) {
+      reminder.date = new Date(data.date);
+      reminder.isSent = false; // Reset sent status if date changes
+    }
     if (data.description !== undefined) reminder.description = data.description.trim();
     if (data.timeZone !== undefined) reminder.timeZone = data.timeZone;
 
