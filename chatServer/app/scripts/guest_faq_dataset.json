@@ -62,7 +62,7 @@
   {
     "id": "faq_auth_change_password",
     "category": "auth",
-    "high_quality_answer": "You can change your password anytime from the Settings page by providing your current password. Changing your password will automatically log you out of all other active sessions.",
+    "high_quality_answer": "You can change your password anytime from your Profile page by providing your current password. Changing your password will automatically log you out of all other active sessions.",
     "search_variations": [
       "How do I change my password inside the app?",
       "update password securely",

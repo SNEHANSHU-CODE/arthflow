@@ -8,7 +8,7 @@
       "close my account completely",
       "delete everything"
     ],
-    "high_quality_answer": "To permanently delete your account, go to **Settings > Privacy > Delete Account**. Please note that this action is irreversible and will permanently remove all your transactions, goals, and Vault documents."
+    "high_quality_answer": "To permanently delete your account, go to **Profile > Delete Account**. You must confirm this action by typing 'DELETE' and entering your password. Please note that this action is irreversible and will permanently remove all your transactions, goals, and Vault documents."
   },
   {
     "id": "auth_change_currency",
@@ -19,7 +19,7 @@
       "update currency symbol",
       "change default money"
     ],
-    "high_quality_answer": "You can change your default currency at any time. Go to **Settings > Preferences** and select your preferred currency from the dropdown. This will automatically update all your dashboards and historical transactions."
+    "high_quality_answer": "You can change your default currency at any time. Go to **Settings** and select your preferred currency from the dropdown. This will automatically update all your dashboards and historical transactions."
   },
   {
     "id": "auth_vault_limits",
@@ -61,7 +61,7 @@
       "I want to update my security settings",
       "forgot my old password"
     ],
-    "high_quality_answer": "To change your password, go to **Settings > Security** and click 'Change Password'. You will need to enter your current password to authorize the change."
+    "high_quality_answer": "To change your password, go to your **Profile** and scroll down to the 'Change Password' section. You will need to enter your current password to authorize the change."
   },
   {
     "id": "auth_app_features",
@@ -147,7 +147,7 @@
       "lost access to OTP",
       "MFA recovery"
     ],
-    "high_quality_answer": "MFA in Arthflow is delivered via OTP to your **registered email address** — not an authenticator app. If you have lost access to your email, please use your email provider's account recovery. Once back in your email, you can re-enable MFA from **Settings > Security**."
+    "high_quality_answer": "MFA in Arthflow is delivered via OTP to your **registered email address** — not an authenticator app. If you have lost access to your email, please use your email provider's account recovery. Once back in your email, you can re-enable MFA from **Settings** under the 'Two-Factor Authentication' section."
   },
   {
     "id": "auth_vault_privacy",
@@ -169,7 +169,7 @@
       "did I leave my account logged in at work?",
       "view logged in devices"
     ],
-    "high_quality_answer": "To secure your account, go to **Settings > Security > Active Sessions**. From there, you can view all devices currently logged into your account and click 'Terminate All Other Sessions' to instantly log them out."
+    "high_quality_answer": "To secure your account, go to **Settings** and scroll down to 'Active Sessions'. From there, you can view all devices currently logged into your account and click 'Sign Out All' to instantly log them out."
   },
   {
     "id": "auth_add_transaction_split",
@@ -202,7 +202,7 @@
       "change app colors",
       "dark theme"
     ],
-    "high_quality_answer": "You can customize Arthflow's appearance to suit your style! Navigate to **Settings > Appearance** to switch between Light Mode, Dark Mode, or 'System Default' to match your operating system's theme."
+    "high_quality_answer": "You can customize Arthflow's appearance to suit your style! Navigate to **Settings** to switch between Light Mode, Dark Mode, or 'Auto' to match your operating system's theme."
   },
   {
     "id": "auth_vault_delete",

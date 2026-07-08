@@ -99,7 +99,12 @@ const getAuthorizedClient = async (userId) => {
         console.log('✅ Access token refreshed and saved');
       } catch (refreshError) {
         console.error('❌ Failed to refresh access token:', refreshError);
-        throw new Error('Failed to refresh Google access token. Please reconnect.');
+        const isInvalidGrant = refreshError.message === 'invalid_grant' || 
+                               refreshError.response?.data?.error === 'invalid_grant';
+        if (isInvalidGrant) {
+          throw new Error('invalid_grant');
+        }
+        throw new Error('Network error. Failed to refresh Google access token.');
       }
     }
 
@@ -297,9 +302,12 @@ googleRouter.get('/status', authenticateToken, async (req, res) => {
       } catch (err) {
         console.warn(`[GoogleCalendar] Token validation failed for user ${userId}:`, err.message);
         isConnected = false;
-        // Clean up invalid tokens
-        await deleteGoogleTokens(userId);
-        await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
+        
+        // Only clean up invalid tokens if the token is permanently revoked
+        if (err.message === 'invalid_grant' || err.message.includes('not found')) {
+          await deleteGoogleTokens(userId);
+          await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
+        }
       }
     }
     
@@ -330,8 +338,20 @@ googleRouter.delete('/disconnect', authenticateToken, async (req, res) => {
     const { deleteGoogleTokens } = require('../utils/googleTokenCache');
     await deleteGoogleTokens(userId);
     
+    // Revoke token from Google before deleting it
+    const user = await User.findById(userId).select('+googleRefreshToken');
+    if (user && user.googleRefreshToken) {
+      try {
+        const { createOAuthClient } = require('../utils/googleOauth');
+        const oauth2Client = createOAuthClient();
+        await oauth2Client.revokeToken(user.googleRefreshToken);
+      } catch (revokeErr) {
+        console.warn('Failed to revoke Google token:', revokeErr.message);
+      }
+    }
+    
     // Remove refresh token from DB
-    await User.findByIdAndUpdate(userId, { googleRefreshToken: null });
+    await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
     
     console.log('🔓 Google account disconnected for user:', userId);
     res.json({ success: true, message: 'Google account disconnected successfully' });

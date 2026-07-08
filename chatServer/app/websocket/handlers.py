@@ -62,7 +62,7 @@ class SocketEventHandlers:
                 "user_id": None,
                 "is_authenticated": False,
                 "username": None,
-                "connected_at": datetime.utcnow().isoformat(),
+                "connected_at": datetime.utcnow().isoformat() + "Z",
                 "last_message_time": 0.0,
             }
         return self.sessions[sid]
@@ -183,7 +183,7 @@ class SocketEventHandlers:
         response = {
             "isAuthenticated": is_authenticated,
             "username": session["username"],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
         
         await self.sio.emit('authenticated', response, room=sid)
@@ -213,7 +213,7 @@ class SocketEventHandlers:
                     await self.sio.emit('error', {
                         "message": "Invalid vault ID.",
                         "code": "INVALID_VAULT_ID",
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
                     }, room=sid)
                     return
 
@@ -227,7 +227,7 @@ class SocketEventHandlers:
                 await self.sio.emit('error', {
                     "message": "Empty message",
                     "code": "INVALID_MESSAGE",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
                 return
                 
@@ -236,7 +236,7 @@ class SocketEventHandlers:
                 await self.sio.emit('error', {
                     "message": "Message is too long. Please keep it under 500 characters.",
                     "code": "MESSAGE_TOO_LONG",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
                 return
 
@@ -247,7 +247,7 @@ class SocketEventHandlers:
                 await self.sio.emit('error', {
                     "message": "You are sending messages too quickly. Please wait a moment.",
                     "code": "RATE_LIMIT_EXCEEDED",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
                 return
             session["last_message_time"] = current_time
@@ -256,7 +256,7 @@ class SocketEventHandlers:
             # Send typing indicator
             await self.sio.emit('bot_typing', {
                 "isTyping": True,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
 
             # Removed inline imports
@@ -302,7 +302,7 @@ class SocketEventHandlers:
                         await self.sio.emit('error', {
                             "message": "Vault not found",
                             "code": "VAULT_NOT_FOUND",
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.utcnow().isoformat() + "Z",
                         }, room=sid)
                         return
 
@@ -406,7 +406,7 @@ class SocketEventHandlers:
                 # Stop typing immediately since streaming starts
                 await self.sio.emit('bot_typing', {
                     "isTyping": False,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
 
                 # Generate unique message ID
@@ -420,7 +420,7 @@ class SocketEventHandlers:
                     "isLast": False,
                     "provider": provider,
                     "metadata": None,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
 
                 accumulated_text = prefix_text
@@ -437,7 +437,7 @@ class SocketEventHandlers:
                             "isLast": False,
                             "provider": provider,
                             "metadata": None,
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.utcnow().isoformat() + "Z",
                         }, room=sid)
                         await asyncio.sleep(0.015)
                 else:
@@ -453,7 +453,7 @@ class SocketEventHandlers:
                                 "isLast": False,
                                 "provider": provider,
                                 "metadata": None,
-                                "timestamp": datetime.utcnow().isoformat(),
+                                "timestamp": datetime.utcnow().isoformat() + "Z",
                             }, room=sid)
                     except Exception as stream_error:
                         logger.warning("Stream failed for primary provider, attempting fallback...")
@@ -467,7 +467,7 @@ class SocketEventHandlers:
                                     "isLast": True,
                                     "provider": provider,
                                     "metadata": {"error": "stream_failed"},
-                                    "timestamp": datetime.utcnow().isoformat(),
+                                    "timestamp": datetime.utcnow().isoformat() + "Z",
                                 }, room=sid)
 
                                 # Reset state and create a new clean message bubble
@@ -482,7 +482,7 @@ class SocketEventHandlers:
                                     "isLast": False,
                                     "provider": "gemini",
                                     "metadata": None,
-                                    "timestamp": datetime.utcnow().isoformat(),
+                                    "timestamp": datetime.utcnow().isoformat() + "Z",
                                 }, room=sid)
 
                                 fallback_llm = await llm_provider.get_gemini_llm()
@@ -496,7 +496,7 @@ class SocketEventHandlers:
                                         "isLast": False,
                                         "provider": "gemini",
                                         "metadata": None,
-                                        "timestamp": datetime.utcnow().isoformat(),
+                                        "timestamp": datetime.utcnow().isoformat() + "Z",
                                     }, room=sid)
                                 provider = "gemini"
                             except Exception as fallback_err:
@@ -519,7 +519,7 @@ class SocketEventHandlers:
                         "isLast": False,
                         "provider": provider,
                         "metadata": None,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
                     }, room=sid)
                     
                     # A-2: Fetch DB context with timeout guard
@@ -551,7 +551,7 @@ class SocketEventHandlers:
                                     "isLast": False,
                                     "provider": db_provider,
                                     "metadata": None,
-                                    "timestamp": datetime.utcnow().isoformat(),
+                                    "timestamp": datetime.utcnow().isoformat() + "Z",
                                 }, room=sid)
                             provider = db_provider
                             metadata["response_type"] = "authenticated_fallback"
@@ -573,7 +573,7 @@ class SocketEventHandlers:
                     "provider": provider,
                     "metadata": metadata,
                     "response": accumulated_text,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
 
             except Exception as e:
@@ -591,7 +591,7 @@ class SocketEventHandlers:
                             "isLast": True,
                             "provider": provider if 'provider' in locals() else "fallback",
                             "metadata": {"error": "stream_failed"},
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.utcnow().isoformat() + "Z",
                         }, room=sid)
                 except Exception:
                     pass
@@ -605,7 +605,7 @@ class SocketEventHandlers:
                     "provider": "fallback",
                     "metadata": {"error": True, "response_type": "error"},
                     "response": error_msg,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
         
         except Exception as e:
@@ -613,7 +613,7 @@ class SocketEventHandlers:
             await self.sio.emit('error', {
                 "message": "Failed to process message",
                 "code": "MESSAGE_ERROR",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
     
     # ===== UTILITY HANDLERS =====
@@ -631,7 +631,7 @@ class SocketEventHandlers:
             if not user_id or not session.get("is_authenticated"):
                 await self.sio.emit("chat_history", {
                     "messages": [],
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
                 }, room=sid)
                 return
 
@@ -643,7 +643,7 @@ class SocketEventHandlers:
 
             await self.sio.emit("chat_history", {
                 "messages": messages,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
 
             logger.info(f"📜 Sent {len(messages)} history messages to user {user_id}")
@@ -653,7 +653,7 @@ class SocketEventHandlers:
             await self.sio.emit("chat_history", {
                 "messages": [],
                 "error": "Failed to load history",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
 
     async def handle_get_suggestions(self, sid: str, data: dict):
@@ -683,7 +683,7 @@ class SocketEventHandlers:
             
             await self.sio.emit('suggestions_update', {
                 "suggestions": suggestions,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
             
         except Exception as e:
@@ -711,7 +711,7 @@ class SocketEventHandlers:
                     {"$set": {
                         "rating": rating,
                         "feedback": feedback,
-                        "ratedAt": datetime.utcnow().isoformat()
+                        "ratedAt": datetime.utcnow().isoformat() + "Z"
                     }},
                     upsert=True
                 )
@@ -720,7 +720,7 @@ class SocketEventHandlers:
                 "messageId": message_id,
                 "rating": rating,
                 "success": True,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
         
         except Exception as e:
@@ -742,7 +742,7 @@ class SocketEventHandlers:
 
             await self.sio.emit('chat_cleared', {
                 "success": True,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
 
         except Exception as e:
@@ -761,7 +761,7 @@ class SocketEventHandlers:
             response = {
                 "isAuthenticated": is_authenticated,
                 "username": username,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }
             
             logger.info(f"🔍 Auth verification: {username} (authenticated={is_authenticated})")
@@ -774,5 +774,5 @@ class SocketEventHandlers:
                 "isAuthenticated": False,
                 "username": "guest",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }, room=sid)
