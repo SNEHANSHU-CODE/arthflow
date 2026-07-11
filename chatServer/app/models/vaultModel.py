@@ -6,6 +6,7 @@ Node.js owns writes; Python only updates `isProcessedForRAG`.
 Supported mimeTypes (must match Node.js vaultModel allowlist):
   application/pdf
   text/csv
+  application/vnd.ms-excel                                            (XLS legacy)
   application/vnd.openxmlformats-officedocument.spreadsheetml.sheet  (XLSX)
 """
 from pydantic import BaseModel, Field, ConfigDict, field_validator
@@ -19,7 +20,8 @@ from app.models.base import PyObjectId
 VaultMimeType = Literal[
     "application/pdf",
     "text/csv",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",                                           # .xls (legacy Excel)
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # .xlsx
 ]
 
 

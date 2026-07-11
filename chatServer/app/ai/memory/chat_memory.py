@@ -163,7 +163,13 @@ class ChatMemory:
         """
         try:
             col = Database.chat_history_collection()
-            doc = await col.find_one({"userId": self.user_id})
+            # Use $slice at the DB level to avoid loading the entire message array into memory.
+            # Fetch a generous window (limit * 20) so we have enough RAG messages to filter
+            # by document_name without needing the full history.
+            doc = await col.find_one(
+                {"userId": self.user_id},
+                {"messages": {"$slice": -(limit * 20)}}
+            )
             if not doc or not doc.get("messages"):
                 return []
 

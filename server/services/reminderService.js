@@ -59,7 +59,16 @@ class ReminderService {
           console.log('Access token refreshed successfully');
         } catch (refreshError) {
           console.error('Failed to refresh access token:', refreshError);
-          throw new Error('Failed to refresh Google access token. Please reconnect your Google account.');
+          const isInvalidGrant = refreshError.message === 'invalid_grant' ||
+                                 refreshError.response?.data?.error === 'invalid_grant';
+          if (isInvalidGrant) {
+            // Token permanently revoked — surface this clearly so the caller can
+            // prompt the user to reconnect. Do NOT silently swallow it.
+            throw new Error('invalid_grant');
+          }
+          // Any other error (network blip, 5xx from Google) is transient — throw
+          // a clear message but do NOT delete the stored refresh token.
+          throw new Error('Network error refreshing Google access token. Will retry next time.');
         }
       }
 

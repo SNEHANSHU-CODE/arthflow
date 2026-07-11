@@ -355,6 +355,7 @@ class SocketEventHandlers:
                                 static_auth_text = results[0].response
                                 provider = "semantic_cache"
                                 metadata = {"response_type": "authenticated_cache"}
+                                memory = orchestrator.get_user_memory(user_id)
                                 logger.info(f"✅ Auth Cache hit: '{masked_msg}' (score: {results[0].score:.2f})")
                     except Exception as e:
                         logger.error(f"Auth Cache lookup failed: {e}")

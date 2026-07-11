@@ -1,7 +1,8 @@
 const express = require('express');
 const { google } = require('googleapis');
 const { createOAuthClient, getAuthUrl } = require('../utils/googleOauth');
-const { saveGoogleTokens } = require('../utils/googleTokenCache');
+const { saveGoogleTokens, saveOAuthNonce, consumeOAuthNonce } = require('../utils/googleTokenCache');
+const crypto = require('crypto'); // built-in Node.js — no install needed
 const User = require('../models/userModel');
 const Reminder = require('../models/reminderModel');
 const { authenticateToken } = require('../middleware/auth');
@@ -166,63 +167,57 @@ const syncAllRemindersToGoogle = async (userId, userTimezone = 'UTC') => {
 };
 
 // Step 1: Frontend requests Google OAuth URL
-googleRouter.post('/', authenticateToken, (req, res) => {
+googleRouter.post('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId.toString();
     const timeZone = req.body.timeZone || 'UTC';
     console.log('🔐 Generating OAuth URL for user:', userId);
-    
-    // Encode both userId and timeZone in the state parameter
-    const stateStr = JSON.stringify({ userId, timeZone });
-    const url = getAuthUrl(Buffer.from(stateStr).toString('base64'));
-    console.log('✅ OAuth URL generated successfully');
-    
+
+    // Generate a cryptographically random nonce (UUID v4 = 128 bits of entropy).
+    // Store { userId, timeZone } in Redis under this nonce — NOT in the URL.
+    // Only the opaque nonce goes to Google in the `state` param.
+    // An attacker who sees the state URL learns nothing; a forged nonce
+    // will never exist in Redis and is rejected in the callback.
+    const nonce = crypto.randomUUID();
+    await saveOAuthNonce(nonce, { userId, timeZone });
+
+    const url = getAuthUrl(nonce);
+    console.log('✅ OAuth URL generated with secure nonce state');
     res.status(200).json({ success: true, url });
   } catch (error) {
     console.error('❌ Error generating OAuth URL:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate OAuth URL',
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to initiate Google connection. Please try again.',
     });
   }
 });
 
-// Optional: Server-initiated redirect
-googleRouter.get('/auth', authenticateToken, (req, res) => {
-  try {
-    const userId = req.userId.toString();
-    const url = getAuthUrl(userId);
-    res.redirect(url);
-  } catch (error) {
-    console.error('❌ Error in OAuth redirect:', error);
-    res.status(500).json({ success: false, message: 'OAuth redirect failed' });
-  }
-});
 
 // Step 2: Google redirects back after user grants access
 googleRouter.get('/callback', async (req, res) => {
   try {
     const { code, state, error: oauthError } = req.query;
     
-    let userId = state;
+    // Consume the nonce from Redis — this IS the CSRF/IDOR protection.
+    // consumeOAuthNonce uses GETDEL (atomic read + delete in one Redis command):
+    //   - Returns {userId, timeZone} if the nonce is valid and was not yet used
+    //   - Returns null if: nonce expired (>10 min), already consumed (replay
+    //     attack), forged (never stored in Redis), or Redis error
+    //   - Never throws — always returns payload or null cleanly
+    let userId = null;
     let timeZone = 'UTC';
-    try {
-      if (state) {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
-        if (decoded && decoded.userId) {
-          userId = decoded.userId;
-          timeZone = decoded.timeZone || 'UTC';
-        }
+    if (state) {
+      const noncePayload = await consumeOAuthNonce(state);
+      if (noncePayload) {
+        userId = noncePayload.userId;
+        timeZone = noncePayload.timeZone || 'UTC';
       }
-    } catch (e) {
-      // Fallback if state is just userId (e.g. from an old auth flow)
-      userId = state;
     }
     
     console.log('📥 OAuth callback received');
     console.log('Code present:', !!code);
-    console.log('User ID:', userId, 'TimeZone:', timeZone);
+    console.log('User ID resolved:', !!userId, 'TimeZone:', timeZone); // don't log actual userId (PII)
     console.log('Error:', oauthError);
     
     // Check for OAuth errors
@@ -237,13 +232,16 @@ googleRouter.get('/callback', async (req, res) => {
     }
 
     if (!userId) {
-      console.error('❌ No user ID in state parameter');
+      // Fires when: nonce expired (>10 min), already consumed (replay attack),
+      // state was forged (never existed in Redis), or Redis was unavailable.
+      console.error('❌ OAuth state rejected — nonce invalid, expired, or already consumed');
       return res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=invalid_state`);
     }
 
-    // Validate userId format
+    // Defence-in-depth: validate userId format even though it came from our own Redis.
+    // Guards against data corruption or unexpected Redis values.
     if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.error('❌ Invalid user ID format:', userId);
+      console.error('❌ Corrupt userId in OAuth nonce payload:', userId);
       return res.redirect(`${CLIENT_URL}/dashboard/reminders?googleConnected=false&error=invalid_user_id`);
     }
 
@@ -280,54 +278,30 @@ googleRouter.get('/callback', async (req, res) => {
 });
 
 // Route to check Google connection status
+// This is a PASSIVE check only — reads DB state, no live Google API call.
+// If the refresh token is revoked by Google, the next actual operation
+// (add/edit/delete reminder) will fail with invalid_grant and be handled then.
 googleRouter.get('/status', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId.toString();
-    const { getGoogleTokens, deleteGoogleTokens } = require('../utils/googleTokenCache');
-    
-    // Check Redis for tokens
-    const tokens = await getGoogleTokens(userId);
-    const hasRedisTokens = !!(tokens && tokens.access_token);
-    
-    // Check DB for refresh token
-    const user = await User.findById(userId).select('+googleRefreshToken');
-    const hasRefreshToken = !!(user && user.googleRefreshToken);
-    
-    let isConnected = hasRedisTokens || hasRefreshToken;
 
-    // If we have tokens, let's validate them by getting an authorized client
-    if (isConnected) {
-      try {
-        await getAuthorizedClient(userId);
-      } catch (err) {
-        console.warn(`[GoogleCalendar] Token validation failed for user ${userId}:`, err.message);
-        isConnected = false;
-        
-        // Only clean up invalid tokens if the token is permanently revoked
-        if (err.message === 'invalid_grant' || err.message.includes('not found')) {
-          await deleteGoogleTokens(userId);
-          await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
-        }
-      }
-    }
-    
-    console.log(`📊 Connection status for user ${userId}:`, {
-      connected: isConnected,
-      hasAccessToken: hasRedisTokens,
-      hasRefreshToken
-    });
-    
+    // Ground truth: refresh token in MongoDB.
+    // Access token in Redis is ephemeral — its absence does NOT mean disconnected.
+    const user = await User.findById(userId).select('+googleRefreshToken');
+    const isConnected = !!(user && user.googleRefreshToken);
+
+    console.log(`📊 Connection status for user ${userId}: connected=${isConnected}`);
+
     res.json({
       success: true,
       connected: isConnected,
-      hasAccessToken: hasRedisTokens,
-      hasRefreshToken: hasRefreshToken
     });
   } catch (error) {
     console.error('❌ Error checking Google connection status:', error);
     res.status(500).json({ success: false, message: 'Failed to check connection status' });
   }
 });
+
 
 // Route to disconnect Google account
 googleRouter.delete('/disconnect', authenticateToken, async (req, res) => {

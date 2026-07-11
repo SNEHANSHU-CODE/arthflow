@@ -64,9 +64,21 @@ class GoalService {
   // Update goal
   async updateGoal(goalId, userId, updateData) {
     try {
+      // Whitelist only the fields a user is allowed to change via the edit form.
+      // This prevents mass assignment of internal fields (savedAmount, status,
+      // userId, isGuestMigrated, migratedAt) even if a client sends them.
+      // Status transitions are handled by dedicated methods (pauseGoal, resumeGoal, markGoalComplete).
+      const ALLOWED_FIELDS = ['name', 'category', 'priority', 'targetAmount', 'targetDate', 'description'];
+      const safeUpdate = {};
+      for (const key of ALLOWED_FIELDS) {
+        if (updateData[key] !== undefined) {
+          safeUpdate[key] = updateData[key];
+        }
+      }
+
       const goal = await Goal.findOneAndUpdate(
         { _id: goalId, userId },
-        updateData,
+        safeUpdate,
         { new: true, runValidators: true }
       );
       return goal;

@@ -125,7 +125,7 @@ class VaultService:
             return False
         except Exception as e:
             logger.error(f"Error marking vault {vault_id} as processed: {e}")
-            raise
+            return False  # safe return — prevents infinite cron retry on bad vault_id
 
     @classmethod
     async def mark_as_unprocessed(cls, vault_id: str) -> bool:
@@ -187,13 +187,18 @@ class VaultService:
             raise
 
     @classmethod
-    async def get_stats(cls) -> dict:
-        """Get statistics about vault documents."""
+    async def get_stats(cls, user_id: Optional[str] = None) -> dict:
+        """Get statistics about vault documents, scoped to a user when user_id is provided."""
         try:
             vault_col = Database.vault_collection()
-            total = await vault_col.count_documents({})
-            processed = await vault_col.count_documents({"isProcessedForRAG": True})
-            unprocessed = await vault_col.count_documents({"isProcessedForRAG": False})
+            # Always scope by user when provided to prevent cross-user count leakage
+            base_filter: dict = {}
+            if user_id:
+                base_filter["userId"] = ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+
+            total = await vault_col.count_documents(base_filter)
+            processed = await vault_col.count_documents({**base_filter, "isProcessedForRAG": True})
+            unprocessed = await vault_col.count_documents({**base_filter, "isProcessedForRAG": False})
 
             return {
                 "total_documents": total,

@@ -204,10 +204,21 @@ class RAGPipeline:
             #    embeddings store vaultId as plain string; vaults._id is ObjectId
             orphaned_vault_ids = []
             for vid in vault_ids_with_embeddings:
+                # Separate the parse error from a genuine DB lookup failure.
+                # An InvalidId means we can't determine orphan status — skip safely.
                 try:
-                    exists = await vault_col.find_one({"_id": ObjectId(vid)}, {"_id": 1})
+                    oid = ObjectId(vid)
                 except Exception:
-                    exists = None  # invalid ObjectId = vault definitely gone
+                    logger.warning(
+                        "Orphan check: skipping malformed vaultId %r (not a valid ObjectId)", vid
+                    )
+                    continue  # do NOT treat a parse error as 'vault is gone'
+
+                try:
+                    exists = await vault_col.find_one({"_id": oid}, {"_id": 1})
+                except Exception as db_err:
+                    logger.error("Orphan check: DB error looking up vault %s: %s", vid, db_err)
+                    continue  # skip on DB error — safer than deleting
 
                 if not exists:
                     orphaned_vault_ids.append(vid)
@@ -266,6 +277,14 @@ class RAGPipeline:
             failed_count = 0
 
             for vault in unprocessed:
+                # R7 fix: guard against vault documents with missing _id
+                if not vault.id:
+                    logger.error(
+                        "Vault document missing _id field — skipping to prevent infinite retry: %s",
+                        vault
+                    )
+                    failed_count += 1
+                    continue
                 success = await cls.process_vault_document(str(vault.id))
                 if success:
                     processed_count += 1

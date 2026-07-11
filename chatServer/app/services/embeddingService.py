@@ -235,11 +235,19 @@ class EmbeddingStorageService:
             raise
 
     @classmethod
-    async def get_by_vault_id(cls, vault_id: str) -> List[EmbeddingModel]:
-        """Get all embeddings for a specific vault document."""
+    async def get_by_vault_id(cls, vault_id: str, user_id: Optional[str] = None) -> List[EmbeddingModel]:
+        """Get all embeddings for a specific vault document.
+
+        Args:
+            vault_id: Vault document ID
+            user_id: Optional user ID for defense-in-depth scoping
+        """
         try:
             col = Database.embeddings_collection()
-            docs = await col.find({"vaultId": str(vault_id)}).to_list(None)
+            query: dict = {"vaultId": str(vault_id)}
+            if user_id:
+                query["userId"] = str(user_id)
+            docs = await col.find(query).to_list(None)
             result = [EmbeddingModel(**doc) for doc in docs]
             logger.debug("Retrieved %d embeddings for vault %s", len(result), vault_id)
             return result
@@ -248,19 +256,23 @@ class EmbeddingStorageService:
             raise
 
     @classmethod
-    async def delete_by_vault_id(cls, vault_id: str) -> int:
+    async def delete_by_vault_id(cls, vault_id: str, user_id: Optional[str] = None) -> int:
         """
         Delete all embeddings for a vault (called when vault is deleted).
 
         Args:
             vault_id: Vault document ID
+            user_id: Optional user ID for defense-in-depth scoping
 
         Returns:
             Number of deleted embeddings
         """
         try:
             col = Database.embeddings_collection()
-            result = await col.delete_many({"vaultId": str(vault_id)})
+            query: dict = {"vaultId": str(vault_id)}
+            if user_id:
+                query["userId"] = str(user_id)
+            result = await col.delete_many(query)
             logger.info("Deleted %d embeddings for vault %s", result.deleted_count, vault_id)
             return result.deleted_count
         except Exception as e:

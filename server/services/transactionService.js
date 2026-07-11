@@ -225,7 +225,21 @@ class TransactionService {
 
       const transaction = await Transaction.findOne({ _id: transactionId, userId });
       if (!transaction) throw new Error('Transaction not found');
-      Object.assign(transaction, updateData);
+
+      // Whitelist only the fields a user is allowed to edit.
+      // Object.assign(transaction, updateData) was replaced to prevent mass assignment
+      // of internal fields: metadata, _fingerprint, isRecurring internals, userId.
+      const ALLOWED_FIELDS = [
+        'description', 'amount', 'type', 'category', 'date',
+        'paymentMethod', 'notes', 'tags', 'goalId', 'receiptUrl',
+        'isRecurring', 'recurringPattern', 'location'
+      ];
+      for (const key of ALLOWED_FIELDS) {
+        if (updateData[key] !== undefined) {
+          transaction[key] = updateData[key];
+        }
+      }
+
       await transaction.save();
       await transaction.populate('goalId', 'name category');
 

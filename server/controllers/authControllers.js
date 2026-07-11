@@ -363,7 +363,7 @@ class AuthController {
   // Get user profile (public endpoint for authenticated users)
   static async getProfile(req, res) {
     try {
-      const user = await User.findById(req.user._id);
+      const user = await User.findById(req.user._id).select('-password -refreshTokens -googleRefreshToken -__v');
       if (!user) {
         return ResponseUtils.notFound(res, 'User not found');
       }

@@ -138,6 +138,21 @@ class RedisService {
     }
   }
 
+  async getDel(key) {
+    try {
+      if (!this.isConnected) {
+        throw new Error('Redis client not connected');
+      }
+      // GETDEL is atomic: reads the value and deletes the key in a single
+      // Redis command. Prevents replay attacks where two simultaneous requests
+      // both read a nonce before either deletes it.
+      return await this.client.getDel(key);
+    } catch (error) {
+      console.error('Redis GETDEL error:', error);
+      throw error;
+    }
+  }
+
   async exists(key) {
     try {
       if (!this.isConnected) {
