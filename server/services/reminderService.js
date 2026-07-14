@@ -2,7 +2,7 @@ const Reminder = require('../models/reminderModel');
 const emailService = require('./emailService');
 const notificationService = require('./notificationService');
 const { google } = require('googleapis');
-const { getGoogleTokens, saveGoogleTokens } = require('../utils/googleTokenCache');
+const { getGoogleTokens, saveGoogleTokens, deleteGoogleTokens } = require('../utils/googleTokenCache');
 const User = require('../models/userModel');
 
 class ReminderService {
@@ -41,8 +41,7 @@ class ReminderService {
         const user = await User.findById(userId).select('+googleRefreshToken');
         if (!user || !user.googleRefreshToken) {
           console.warn(
-            `[GoogleCalendar] Access denied: No refresh token found for user ${userId}. ` +
-            'The user needs to disconnect and reconnect their Google Calendar account to reauthorize.'
+            `[GoogleCalendar] No refresh token for user ${userId}. User must reconnect.`
           );
           return null;
         }
@@ -54,21 +53,60 @@ class ReminderService {
           const { credentials } = await oauth2Client.refreshAccessToken();
           tokens = credentials;
           
-          // Save the refreshed tokens back to Redis using the imported helper
+          // Save the new access token to Redis (always)
           await saveGoogleTokens(userId, tokens);
-          console.log('Access token refreshed successfully');
+
+          // ── CRITICAL: Handle Google refresh token rotation ───────────────────
+          // Google can issue a NEW refresh_token alongside the new access_token.
+          // If this happens and we don't save the new refresh_token to MongoDB,
+          // the NEXT refresh will use the OLD (now revoked) refresh_token from DB
+          // and fail with `unauthorized_client` — exactly the production bug.
+          // This is why calendar stops working after ~24 hours despite "Connected".
+          if (credentials.refresh_token) {
+            await User.findByIdAndUpdate(userId, { googleRefreshToken: credentials.refresh_token });
+            console.log('🔄 Google issued new refresh token (rotation) — saved to DB');
+          }
+
+          console.log('✅ Access token refreshed successfully');
         } catch (refreshError) {
           console.error('Failed to refresh access token:', refreshError);
-          const isInvalidGrant = refreshError.message === 'invalid_grant' ||
-                                 refreshError.response?.data?.error === 'invalid_grant';
-          if (isInvalidGrant) {
-            // Token permanently revoked — surface this clearly so the caller can
-            // prompt the user to reconnect. Do NOT silently swallow it.
-            throw new Error('invalid_grant');
+
+          // Detect BOTH error types that mean the refresh token is permanently dead:
+          //   - invalid_grant: token revoked by user, or rotated by Google
+          //   - unauthorized_client: token expired (always happens after 7 days
+          //     when the Google OAuth app is in "Testing" mode)
+          const errorCode = refreshError.response?.data?.error || refreshError.message;
+          const isDeadToken =
+            errorCode === 'invalid_grant' ||
+            errorCode === 'unauthorized_client';
+
+          if (isDeadToken) {
+            // The refresh token is permanently unusable. Clean it up so:
+            //   1. /status returns connected=false (not a false "Connected" state)
+            //   2. The UI shows the reconnect button
+            //   3. We don't retry a dead token on every calendar operation
+            console.warn(
+              `[GoogleCalendar] Refresh token permanently expired for user ${userId} ` +
+              `(error: ${errorCode}). Clearing stored token — user must reconnect.`
+            );
+
+            // Clear from MongoDB
+            await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
+
+            // Clear from Redis
+            await deleteGoogleTokens(userId);
+
+            // Throw a distinct error code the frontend can react to
+            const err = new Error(
+              'Your Google Calendar connection has expired. Please disconnect and reconnect your Google account.'
+            );
+            err.code = 'GOOGLE_TOKEN_EXPIRED';
+            throw err;
           }
+
           // Any other error (network blip, 5xx from Google) is transient — throw
           // a clear message but do NOT delete the stored refresh token.
-          throw new Error('Network error refreshing Google access token. Will retry next time.');
+          throw new Error('Network error. Failed to refresh Google access token. Will retry next time.');
         }
       }
 
@@ -173,10 +211,14 @@ class ReminderService {
 
     const saved = await reminder.save();
 
-    // Try to sync to Google Calendar
+    // Try to sync to Google Calendar — reminder is already saved to DB.
+    // If the Google sync fails with GOOGLE_TOKEN_EXPIRED, re-throw so the
+    // controller can surface it to the frontend. Any other sync error is
+    // non-fatal (reminder stays saved, calendar just doesn't get it).
     try {
       await this.addToGoogleCalendar(userId, saved);
     } catch (err) {
+      if (err.code === 'GOOGLE_TOKEN_EXPIRED') throw err;
       console.warn(`Reminder saved but not synced to Google: ${err.message}`);
     }
 
@@ -197,13 +239,14 @@ class ReminderService {
 
     const updated = await reminder.save();
 
-    // Try to update in Google Calendar
+    // Try to update in Google Calendar — reminder is already saved to DB.
     try {
       await this.updateGoogleCalendarEvent(userId, updated);
     } catch (err) {
+      if (err.code === 'GOOGLE_TOKEN_EXPIRED') throw err;
       console.warn(`Reminder updated but not synced to Google: ${err.message}`);
     }
-    
+
     return updated;
   }
 
@@ -211,13 +254,14 @@ class ReminderService {
     const reminder = await Reminder.findOneAndDelete({ _id: reminderId, userId });
     if (!reminder) throw new Error('Reminder not found');
 
-    // Try to delete from Google Calendar
+    // Try to delete from Google Calendar — reminder is already deleted from DB.
     try {
       await this.deleteGoogleCalendarEvent(userId, reminder.calendarEventId);
     } catch (err) {
+      if (err.code === 'GOOGLE_TOKEN_EXPIRED') throw err;
       console.warn(`Reminder deleted but not removed from Google: ${err.message}`);
     }
-    
+
     return reminder;
   }
 

@@ -94,17 +94,36 @@ const getAuthorizedClient = async (userId) => {
       try {
         const { credentials } = await oauth2Client.refreshAccessToken();
         tokens = credentials;
-        
-        // Save the new tokens
+
+        // Save new access token to Redis
         await saveGoogleTokens(userId, tokens);
+
+        // ── Handle Google refresh token rotation ────────────────────────────
+        // Google can issue a NEW refresh_token with the new access_token.
+        // Must save it to MongoDB or the next refresh will use the old
+        // (now revoked) one and fail with unauthorized_client.
+        if (credentials.refresh_token) {
+          await User.findByIdAndUpdate(userId, { googleRefreshToken: credentials.refresh_token });
+          console.log('🔄 Refresh token rotated — updated in DB');
+        }
+
         console.log('✅ Access token refreshed and saved');
       } catch (refreshError) {
         console.error('❌ Failed to refresh access token:', refreshError);
-        const isInvalidGrant = refreshError.message === 'invalid_grant' || 
-                               refreshError.response?.data?.error === 'invalid_grant';
-        if (isInvalidGrant) {
-          throw new Error('invalid_grant');
+
+        const errorCode = refreshError.response?.data?.error || refreshError.message;
+        const isDeadToken =
+          errorCode === 'invalid_grant' ||
+          errorCode === 'unauthorized_client';
+
+        if (isDeadToken) {
+          // Token permanently dead — clear it so /status returns connected=false
+          const { deleteGoogleTokens } = require('../utils/googleTokenCache');
+          await User.findByIdAndUpdate(userId, { $unset: { googleRefreshToken: 1 } });
+          await deleteGoogleTokens(userId);
+          throw new Error('Google Calendar session expired. Please reconnect your Google account.');
         }
+
         throw new Error('Network error. Failed to refresh Google access token.');
       }
     }

@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { FaSpinner, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 
-import { createReminder, fetchReminders, googleConnect, updateReminder, deleteReminder } from '../app/reminderSlice';
+import { createReminder, fetchReminders, googleConnect, updateReminder, deleteReminder, clearGoogleTokenExpired } from '../app/reminderSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { usePreferences } from '../hooks/usePreferences';
 import ToastNotification from '../components/ToastNotification';
@@ -14,7 +14,7 @@ import reminderService from '../services/reminderService';
 
 export default function Reminders() {
   const dispatch = useDispatch();
-  const { loading, events, error } = useSelector(state => state.reminder);
+  const { loading, events, error, googleTokenExpired } = useSelector(state => state.reminder);
   const { toasts, showToast, removeToast } = useToast();
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -53,6 +53,7 @@ export default function Reminders() {
     if (isGoogleConnectedParam === 'true') {
       showToast('Google Calendar connected successfully!', 'success');
       setGoogleConnected(true);
+      dispatch(clearGoogleTokenExpired()); // clear any expired state after successful reconnect
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (isGoogleConnectedParam === 'false') {
@@ -166,15 +167,29 @@ export default function Reminders() {
 
   const handleGoogleConnect = async (e) => {
     e.preventDefault();
+
+    // If the token has expired, the DB refresh token is already cleared.
+    // Bypass the disconnect modal and go straight to reconnect.
+    // Also reset local googleConnected so the button shows correctly.
+    if (googleTokenExpired) {
+      setGoogleConnected(false);
+      console.log('🔄 Token expired — starting reconnect flow');
+      try {
+        await dispatch(googleConnect()).unwrap();
+      } catch (err) {
+        console.error('❌ Reconnect error:', err);
+        showToast(`Failed to reconnect Google Calendar: ${err.message || 'Unknown error'}`, 'error');
+      }
+      return;
+    }
+
     if (googleConnected) {
       setShowDisconnectModal(true);
       return;
     }
 
     console.log('🔐 Google Connect button clicked');
-    
     try {
-      // Dispatch the action and wait for it
       const result = await dispatch(googleConnect()).unwrap();
       console.log('✅ Google connect result:', result);
     } catch (err) {
@@ -201,15 +216,38 @@ export default function Reminders() {
         </div>
         <div>
           <button
-            className={`btn ${googleConnected ? 'btn-success' : 'btn-outline-primary'}`}
+            className={`btn ${
+              googleTokenExpired ? 'btn-warning' :
+              googleConnected   ? 'btn-success' : 'btn-outline-primary'
+            }`}
             onClick={handleGoogleConnect}
             disabled={loading}
           >
             {loading && <FaSpinner className="fa-spin me-2" />}
-            {googleConnected ? 'Connected to Calendar' : 'Connect to Calendar'}
+            {googleTokenExpired ? '⚠️ Reconnect Calendar' :
+             googleConnected   ? 'Connected to Calendar' : 'Connect to Calendar'}
           </button>
         </div>
       </div>
+
+      {/* ── Google Calendar session-expired banner (full width, below header) ─── */}
+      {googleTokenExpired && (
+        <div className="alert alert-warning d-flex align-items-center gap-3 mx-3 mt-3 mb-0" role="alert">
+          <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+          <div className="flex-grow-1">
+            <strong>Google Calendar session expired.</strong>{' '}
+            Your calendar connection needs to be refreshed. Please reconnect to continue syncing reminders.
+          </div>
+          <button
+            className="btn btn-warning btn-sm"
+            onClick={handleGoogleConnect}
+            disabled={loading}
+          >
+            {loading && <FaSpinner className="fa-spin me-1" />}
+            Reconnect Calendar
+          </button>
+        </div>
+      )}
 
       <div className="p-3">
         {error && (
